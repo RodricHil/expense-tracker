@@ -194,25 +194,24 @@ export default function AddExpense() {
                 Payment Mode
               </label>
               <div className="grid grid-cols-2 gap-3">
-  {["online", "cash"].map((mode) => {
-    const isActive = form.mode === mode;
+                {["online", "cash"].map((mode) => {
+                  const isActive = form.mode === mode;
 
-    return (
-      <button
-        key={mode}
-        type="button"
-        onClick={() => setForm({ ...form, mode })}
-        className={`py-3 rounded-lg font-medium transition-all duration-200 cursor-pointer border ${
-          isActive
-            ? "bg-purple-600 text-white border-purple-600 shadow-md"
-            : "bg-white text-gray-800 border-gray-300 hover:bg-gray-100 hover:text-gray-900 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:hover:text-white"
-        }`}
-      >
-        {mode.charAt(0).toUpperCase() + mode.slice(1)}
-      </button>
-    );
-  })}
-</div>
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setForm({ ...form, mode })}
+                      className={`py-3 rounded-lg font-medium transition-all duration-200 cursor-pointer border ${isActive
+                          ? "bg-purple-600 text-white border-purple-600 shadow-md"
+                          : "bg-white text-gray-800 border-gray-300 hover:bg-gray-100 hover:text-gray-900 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:hover:text-white"
+                        }`}
+                    >
+                      {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                    </button>
+                  );
+                })}
+              </div>
 
             </div>
 

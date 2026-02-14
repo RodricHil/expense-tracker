@@ -48,7 +48,7 @@ export default function ExpensesPage() {
     if (res.ok) {
       const data = await res.json();
       setExpenses(data);
-      
+
       // Calculate total spent
       const total = data.reduce((sum: number, exp: Expense) => sum + exp.amount, 0);
       setTotalSpent(total);
@@ -124,6 +124,7 @@ export default function ExpensesPage() {
     return colors[type] || "from-gray-400 to-gray-600";
   };
 
+  
   return (
     <div className="min-h-screen pt-24 pb-12 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950">
       {/* Header */}
@@ -135,7 +136,7 @@ export default function ExpensesPage() {
             </h1>
             <p className="text-gray-600 dark:text-gray-400">Track and manage your expenses</p>
           </div>
-          <Link 
+          <Link
             href="/add-expenses"
             className="bg-gradient-to-r cursor-pointer from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hidden md:block"
           >
@@ -196,7 +197,7 @@ export default function ExpensesPage() {
               <FontAwesomeIcon icon={faChartPie} className="text-purple-600 w-6 h-6" />
               Expenses ({dateRange.label})
             </h2>
-            <Link 
+            <Link
               href="/add-expenses"
               className="md:hidden bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold py-2 px-4 rounded-lg text-sm"
             >
@@ -211,7 +212,7 @@ export default function ExpensesPage() {
               </div>
               <p className="text-gray-600 dark:text-gray-400 text-lg mb-4">No expenses in this range</p>
               <p className="text-gray-500 dark:text-gray-500 text-sm mb-6">Try selecting a different date range or add new expenses</p>
-              <Link 
+              <Link
                 href="/add-expenses"
                 className="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold py-2 px-6 rounded-lg inline-block hover:shadow-lg transition-all"
               >
@@ -257,11 +258,10 @@ export default function ExpensesPage() {
                           </td>
                           <td className="py-4 px-4">
                             <span
-                              className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
-                                exp.mode === "cash"
+                              className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${exp.mode === "cash"
                                   ? "bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-200"
                                   : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200"
-                              }`}
+                                }`}
                             >
                               {exp.mode.charAt(0).toUpperCase() + exp.mode.slice(1)}
                             </span>
