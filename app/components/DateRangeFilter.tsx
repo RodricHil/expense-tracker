@@ -95,6 +95,16 @@ const getRangeFromPreset = (
       }
     }
   };
+const handleClear = () => {
+  setCustomStart("");
+  setCustomEnd("");
+  setSelectedRange("30days"); // default
+
+  const defaultRange = getRangeFromPreset("30days");
+  if (defaultRange) {
+    onRangeChange(defaultRange);
+  }
+};
 
   return (
     <div className="glass rounded-2xl p-6 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-lg mb-8">
@@ -186,20 +196,30 @@ const getRangeFromPreset = (
     </div>
 
     {/* Apply Button */}
-    <div className="flex justify-end mt-5">
-      <button
-        disabled={!customStart || !customEnd}
-        onClick={() => handleCustomDateChange()}
-        className={`px-5 py-2.5 rounded-lg font-medium transition-all shadow-md
-          ${
-            customStart && customEnd
-              ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:scale-105 hover:shadow-lg"
-              : "bg-gray-300 dark:bg-gray-700 text-gray-500 cursor-not-allowed"
-          }`}
-      >
-        Apply
-      </button>
-    </div>
+    <div className="flex justify-end mt-5 gap-3">
+  <button
+    onClick={handleClear}
+    className="px-5 py-2.5 rounded-lg font-medium border border-gray-300 
+    dark:border-gray-600 text-gray-700 dark:text-gray-300 
+    hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+  >
+    Clear
+  </button>
+
+  <button
+    disabled={!customStart || !customEnd}
+    onClick={() => handleCustomDateChange()}
+    className={`px-5 py-2.5 rounded-lg font-medium transition-all shadow-md
+      ${
+        customStart && customEnd
+          ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:scale-105 hover:shadow-lg"
+          : "bg-gray-300 dark:bg-gray-700 text-gray-500 cursor-not-allowed"
+      }`}
+  >
+    Apply
+  </button>
+</div>
+
 
   </div>
 )}
