@@ -293,14 +293,14 @@ const filterExpensesByRange = (
                             <div className="flex justify-center gap-3">
                               <button
                                 onClick={() => setEditingExpense(exp)}
-                                className="p-2 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                                className="p-2 rounded-lg text-blue-600 cursor-pointer dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
                                 title="Edit"
                               >
                                 <FontAwesomeIcon icon={faPen} className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleDelete(exp._id)}
-                                className="p-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                                className="p-2 rounded-lg text-red-600 cursor-pointer dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                                 title="Delete"
                               >
                                 <FontAwesomeIcon icon={faTrash} className="w-4 h-4" />
