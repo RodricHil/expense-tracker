@@ -1,0 +1,253 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faArrowLeft,
+  faCheck,
+  faSpinner,
+  faChevronDown,
+} from "@fortawesome/free-solid-svg-icons";
+import Link from "next/link";
+
+const categories = [
+  "food",
+  "electronics",
+  "dress",
+  "service",
+  "gardening",
+  "furniture",
+  "house utility",
+  "footwear",
+  "makeup/grooming",
+  "subscriptions",
+  "toy/figures/stationary",
+  "travel expenses",
+  "gifts",
+  "medicines",
+  "harmful item",
+  "investment",
+  "bills",
+  "repair",
+  "vehicle expenses",
+  "decoration",
+  "others",
+];
+
+export default function AddExpense() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [amountError, setAmountError] = useState("");
+
+  const [form, setForm] = useState({
+    date: new Date().toISOString().split("T")[0],
+    description: "",
+    quantity: "",
+    mode: "online",
+    type: "food",
+    amount: "",
+  });
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+
+    if (name === "amount") {
+      const regex = /^\d+(\.\d{0,2})?$/;
+      if (value === "" || regex.test(value)) {
+        setAmountError("");
+        setForm({ ...form, amount: value });
+      } else {
+        setAmountError("Only numbers with max 2 decimal places allowed");
+      }
+      return;
+    }
+
+    setForm({ ...form, [name]: value });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!form.amount) {
+      setAmountError("Amount is required");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const res = await fetch("/api/expenses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          quantity: form.quantity ? Number(form.quantity) : null,
+          amount: Number(form.amount),
+        }),
+      });
+
+      if (res.ok) {
+        router.push("/dashboard");
+      } else {
+        alert("Failed to add expense");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen pt-20 pb-12 px-4 sm:px-6 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950">
+      <div className="max-w-xl mx-auto">
+
+        <h1 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-8">
+          Add Expense
+        </h1>
+
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-8 shadow-xl border border-gray-200 dark:border-slate-700">
+          <form onSubmit={handleSubmit} className="space-y-6">
+
+            {/* Date */}
+            <div>
+              <label className="block text-sm font-semibold mb-2">
+                Date
+              </label>
+              <input
+                type="date"
+                name="date"
+                required
+                value={form.date}
+                onChange={handleChange}
+                className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-purple-500 transition"
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-semibold mb-2">
+                Description
+              </label>
+              <input
+                type="text"
+                name="description"
+                required
+                value={form.description}
+                onChange={handleChange}
+                placeholder="Lunch, Grocery, etc."
+                className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-purple-500 transition"
+              />
+            </div>
+
+            {/* Amount */}
+            <div>
+              <label className="block text-sm font-semibold mb-2">
+                Amount (₹)
+              </label>
+              <input
+                type="text"
+                name="amount"
+                inputMode="decimal"
+                value={form.amount}
+                onChange={handleChange}
+                placeholder="0.00"
+                className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-purple-500 transition"
+              />
+              {amountError && (
+                <p className="text-red-500 text-sm mt-1">
+                  {amountError}
+                </p>
+              )}
+            </div>
+
+            {/* Category - Better Dropdown */}
+            <div>
+              <label className="block text-sm font-semibold mb-2">
+                Category
+              </label>
+              <div className="relative">
+                <select
+                  name="type"
+                  value={form.type}
+                  onChange={handleChange}
+                  className="w-full appearance-none px-4 py-3 rounded-lg border focus:ring-2 focus:ring-purple-500 transition cursor-pointer"
+                >
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                    </option>
+                  ))}
+                </select>
+
+                <FontAwesomeIcon
+                  icon={faChevronDown}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none w-4 h-4"
+                />
+              </div>
+            </div>
+
+            {/* Payment Mode */}
+            <div>
+              <label className="block text-sm font-semibold mb-2">
+                Payment Mode
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+  {["online", "cash"].map((mode) => {
+    const isActive = form.mode === mode;
+
+    return (
+      <button
+        key={mode}
+        type="button"
+        onClick={() => setForm({ ...form, mode })}
+        className={`py-3 rounded-lg font-medium transition-all duration-200 cursor-pointer border ${
+          isActive
+            ? "bg-purple-600 text-white border-purple-600 shadow-md"
+            : "bg-white text-gray-800 border-gray-300 hover:bg-gray-100 hover:text-gray-900 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:hover:text-white"
+        }`}
+      >
+        {mode.charAt(0).toUpperCase() + mode.slice(1)}
+      </button>
+    );
+  })}
+</div>
+
+            </div>
+
+            {/* Submit */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-4">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:scale-[1.02] transition cursor-pointer disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <>
+                    <FontAwesomeIcon icon={faSpinner} className="animate-spin w-4 h-4" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <FontAwesomeIcon icon={faCheck} className="w-4 h-4" />
+                    Save Expense
+                  </>
+                )}
+              </button>
+
+              <Link
+                href="/dashboard"
+                className="flex-1 sm:flex-none px-6 py-3 border rounded-lg text-center font-semibold hover:bg-gray-50 transition cursor-pointer flex items-center justify-center gap-2"
+              >
+                <FontAwesomeIcon icon={faArrowLeft} className="w-4 h-4" />
+                Back
+              </Link>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
