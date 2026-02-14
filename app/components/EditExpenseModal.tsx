@@ -178,7 +178,7 @@ export default function EditExpenseModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 
+              className="flex-1 px-4 py-2 cursor-pointer rounded-lg border border-gray-300 dark:border-slate-600 
               text-gray-700 dark:text-gray-300 font-semibold 
               hover:bg-gray-50 dark:hover:bg-slate-700 transition"
             >
@@ -188,7 +188,7 @@ export default function EditExpenseModal({
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 
+              className="flex-1 bg-gradient-to-r cursor-pointer from-purple-600 to-pink-600 
               hover:from-purple-700 hover:to-pink-700 
               disabled:opacity-50 text-white font-semibold 
               py-2 rounded-lg transition flex items-center justify-center gap-2"
