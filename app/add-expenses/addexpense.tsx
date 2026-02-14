@@ -108,11 +108,12 @@ export default function AddExpense() {
         </h1>
 
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-8 shadow-xl border border-gray-200 dark:border-slate-700">
+
           <form onSubmit={handleSubmit} className="space-y-6">
 
             {/* Date */}
             <div>
-              <label className="block text-sm font-semibold mb-2">
+              <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
                 Date
               </label>
               <input
@@ -121,13 +122,17 @@ export default function AddExpense() {
                 required
                 value={form.date}
                 onChange={handleChange}
-                className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-purple-500 transition"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-slate-600 
+                bg-white dark:bg-slate-800 
+                text-gray-900 dark:text-white 
+                focus:outline-none focus:ring-2 focus:ring-purple-500 
+                transition"
               />
             </div>
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-semibold mb-2">
+              <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
                 Description
               </label>
               <input
@@ -137,13 +142,17 @@ export default function AddExpense() {
                 value={form.description}
                 onChange={handleChange}
                 placeholder="Lunch, Grocery, etc."
-                className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-purple-500 transition"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-slate-600 
+                bg-white dark:bg-slate-800 
+                text-gray-900 dark:text-white 
+                focus:outline-none focus:ring-2 focus:ring-purple-500 
+                transition"
               />
             </div>
 
             {/* Amount */}
             <div>
-              <label className="block text-sm font-semibold mb-2">
+              <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
                 Amount (₹)
               </label>
               <input
@@ -153,7 +162,11 @@ export default function AddExpense() {
                 value={form.amount}
                 onChange={handleChange}
                 placeholder="0.00"
-                className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-purple-500 transition"
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-slate-600 
+                bg-white dark:bg-slate-800 
+                text-gray-900 dark:text-white 
+                focus:outline-none focus:ring-2 focus:ring-purple-500 
+                transition"
               />
               {amountError && (
                 <p className="text-red-500 text-sm mt-1">
@@ -162,17 +175,23 @@ export default function AddExpense() {
               )}
             </div>
 
-            {/* Category - Better Dropdown */}
+            {/* Category */}
             <div>
-              <label className="block text-sm font-semibold mb-2">
+              <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
                 Category
               </label>
+
               <div className="relative">
                 <select
                   name="type"
                   value={form.type}
                   onChange={handleChange}
-                  className="w-full appearance-none px-4 py-3 rounded-lg border focus:ring-2 focus:ring-purple-500 transition cursor-pointer"
+                  className="w-full appearance-none px-4 py-3 rounded-lg 
+                  border border-gray-300 dark:border-slate-600 
+                  bg-white dark:bg-slate-800 
+                  text-gray-900 dark:text-white 
+                  focus:outline-none focus:ring-2 focus:ring-purple-500 
+                  transition cursor-pointer"
                 >
                   {categories.map((cat) => (
                     <option key={cat} value={cat}>
@@ -190,9 +209,10 @@ export default function AddExpense() {
 
             {/* Payment Mode */}
             <div>
-              <label className="block text-sm font-semibold mb-2">
+              <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
                 Payment Mode
               </label>
+
               <div className="grid grid-cols-2 gap-3">
                 {["online", "cash"].map((mode) => {
                   const isActive = form.mode === mode;
@@ -202,25 +222,30 @@ export default function AddExpense() {
                       key={mode}
                       type="button"
                       onClick={() => setForm({ ...form, mode })}
-                      className={`py-3 rounded-lg font-medium transition-all duration-200 cursor-pointer border ${isActive
+                      className={`py-3 rounded-lg font-medium transition-all duration-200 border cursor-pointer ${
+                        isActive
                           ? "bg-purple-600 text-white border-purple-600 shadow-md"
-                          : "bg-white text-gray-800 border-gray-300 hover:bg-gray-100 hover:text-gray-900 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:hover:text-white"
-                        }`}
+                          : "bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-700"
+                      }`}
                     >
                       {mode.charAt(0).toUpperCase() + mode.slice(1)}
                     </button>
                   );
                 })}
               </div>
-
             </div>
 
-            {/* Submit */}
+            {/* Submit Buttons */}
             <div className="flex flex-col sm:flex-row gap-3 pt-4">
+
               <button
                 type="submit"
                 disabled={isLoading}
-                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:scale-[1.02] transition cursor-pointer disabled:opacity-50"
+                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 
+                text-white py-3 rounded-lg font-semibold 
+                flex items-center justify-center gap-2 
+                hover:scale-[1.02] transition 
+                cursor-pointer disabled:opacity-50"
               >
                 {isLoading ? (
                   <>
@@ -237,14 +262,20 @@ export default function AddExpense() {
 
               <Link
                 href="/dashboard"
-                className="flex-1 sm:flex-none px-6 py-3 border rounded-lg text-center font-semibold hover:bg-gray-50 transition cursor-pointer flex items-center justify-center gap-2"
+                className="flex-1 sm:flex-none px-6 py-3 border border-gray-300 dark:border-slate-600 
+                rounded-lg text-center font-semibold 
+                hover:bg-gray-100 dark:hover:bg-slate-700 
+                transition cursor-pointer 
+                flex items-center justify-center gap-2"
               >
                 <FontAwesomeIcon icon={faArrowLeft} className="w-4 h-4" />
                 Back
               </Link>
+
             </div>
 
           </form>
+
         </div>
       </div>
     </div>
