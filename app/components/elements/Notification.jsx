@@ -11,6 +11,7 @@ const Notification = ({ message, type, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setShow(false);
+      if (typeof onClose === "function") onClose();
     }, 4000);
 
     return () => clearTimeout(timer);

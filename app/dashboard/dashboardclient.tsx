@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash, faPen, faChartPie, faEye, faWallet, faCalendarDays } from "@fortawesome/free-solid-svg-icons";
 import EditExpenseModal from "@/app/components/EditExpenseModal";
+import { useNotification } from "@/app/components/elements/NotificationProvider";
 import DateRangeFilter from "@/app/components/DateRangeFilter";
 import Pagination from "@/app/components/Pagination";
 import ConfirmationModal from "@/app/components/ConfirmationModal";
@@ -58,6 +59,8 @@ export default function ExpensesPage() {
       filterExpensesByRange(data, dateRange);
     }
   };
+
+  const { showNotification } = useNotification();
 
 const filterExpensesByRange = (
   allExpenses: Expense[],
@@ -114,6 +117,7 @@ const filterExpensesByRange = (
       setShowDeleteConfirm(false);
       setDeletingExpenseId(null);
       fetchExpenses();
+      showNotification("Expense deleted successfully", "success");
     }
   };
 

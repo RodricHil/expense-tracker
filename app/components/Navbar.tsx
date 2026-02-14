@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
+import { useNotification } from "@/app/components/elements/NotificationProvider";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faBars,
@@ -20,9 +21,13 @@ export default function Navbar() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { data: session } = useSession();
+  const { showNotification } = useNotification();
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
+    try {
+      showNotification("Logged out successfully", "success");
+    } catch (e) {}
     await signOut({ callbackUrl: "/" });
   };
 

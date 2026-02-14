@@ -11,6 +11,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import Link from "next/link";
 import Navbar from "@/app/components/Navbar";
+import { useNotification } from "@/app/components/elements/NotificationProvider";
 
 const categories = [
   "food",
@@ -40,6 +41,7 @@ export default function AddExpense() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [amountError, setAmountError] = useState("");
+  const { showNotification } = useNotification();
 
   const [form, setForm] = useState({
     date: new Date().toISOString().split("T")[0],
@@ -69,7 +71,7 @@ export default function AddExpense() {
     setForm({ ...form, [name]: value });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!form.amount) {
@@ -91,9 +93,10 @@ export default function AddExpense() {
       });
 
       if (res.ok) {
+        showNotification("Expense added successfully", "success");
         router.push("/dashboard");
       } else {
-        alert("Failed to add expense");
+        showNotification("Failed to add expense", "error");
       }
     } finally {
       setIsLoading(false);

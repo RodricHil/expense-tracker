@@ -46,14 +46,14 @@ export default function ConfirmationModal({
           <button
             onClick={onCancel}
             disabled={isLoading}
-            className="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 font-medium hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+            className="flex-1 px-4 py-2 cursor-pointer rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 font-medium hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
           >
             {cancelText}
           </button>
           <button
             onClick={onConfirm}
             disabled={isLoading}
-            className={`flex-1 px-4 py-2 rounded-lg text-white font-medium transition-colors disabled:opacity-50 ${
+            className={`flex-1 px-4 py-2 cursor-pointer rounded-lg text-white font-medium transition-colors disabled:opacity-50 ${
               isDangerous
                 ? "bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
                 : "bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"

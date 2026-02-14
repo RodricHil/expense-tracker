@@ -3,6 +3,7 @@
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useNotification } from "@/app/components/elements/NotificationProvider";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";
@@ -11,9 +12,11 @@ export default function LoginClient() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const { showNotification } = useNotification();
 
   useEffect(() => {
     if (status === "authenticated" && session) {
+      showNotification("Logged in successfully", "success");
       router.push("/dashboard");
     }
   }, [status, session, router]);
