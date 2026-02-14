@@ -20,52 +20,64 @@ export default function DateRangeFilter({ onRangeChange }: DateRangeFilterProps)
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
 
-  const getRangeFromPreset = (preset: "today" | "7days" | "30days" | "custom") => {
-    const endDate = new Date();
-    endDate.setHours(23, 59, 59, 999);
+const getRangeFromPreset = (
+  preset: "today" | "7days" | "30days" | "custom"
+) => {
+  const endDate = new Date();
+  endDate.setUTCHours(23, 59, 59, 999); // ✅ UTC
 
-    let startDate = new Date();
+  let startDate = new Date();
 
-    switch (preset) {
-      case "today":
-        startDate = new Date();
-        startDate.setHours(0, 0, 0, 0);
+  switch (preset) {
+    case "today":
+      startDate = new Date();
+      startDate.setUTCHours(0, 0, 0, 0); // ✅ UTC
+      return {
+        startDate,
+        endDate,
+        label: "Today",
+      };
+
+    case "7days":
+      startDate = new Date(endDate);
+      startDate.setUTCDate(startDate.getUTCDate() - 7); // ✅ UTC
+      startDate.setUTCHours(0, 0, 0, 0);
+      return {
+        startDate,
+        endDate,
+        label: "Last 7 Days",
+      };
+
+    case "30days":
+      startDate = new Date(endDate);
+      startDate.setUTCDate(startDate.getUTCDate() - 30); // ✅ UTC
+      startDate.setUTCHours(0, 0, 0, 0);
+      return {
+        startDate,
+        endDate,
+        label: "Last 30 Days",
+      };
+
+    case "custom":
+      if (customStart && customEnd) {
+        const start = new Date(customStart + "T00:00:00.000Z"); // ✅ force UTC
+        const end = new Date(customEnd + "T23:59:59.999Z"); // ✅ force UTC
+
         return {
-          startDate,
-          endDate,
-          label: "Today",
+          startDate: start,
+          endDate: end,
+          label: `${new Date(customStart).toLocaleDateString(
+            "en-IN"
+          )} to ${new Date(customEnd).toLocaleDateString("en-IN")}`,
         };
-      case "7days":
-        startDate = new Date(endDate);
-        startDate.setDate(startDate.getDate() - 7);
-        startDate.setHours(0, 0, 0, 0);
-        return {
-          startDate,
-          endDate,
-          label: "Last 7 Days",
-        };
-      case "30days":
-        startDate = new Date(endDate);
-        startDate.setDate(startDate.getDate() - 30);
-        startDate.setHours(0, 0, 0, 0);
-        return {
-          startDate,
-          endDate,
-          label: "Last 30 Days",
-        };
-      case "custom":
-        if (customStart && customEnd) {
-          return {
-            startDate: new Date(customStart),
-            endDate: new Date(new Date(customEnd).setHours(23, 59, 59, 999)),
-            label: `${new Date(customStart).toLocaleDateString("en-IN")} to ${new Date(customEnd).toLocaleDateString("en-IN")}`,
-          };
-        }
-        return null;
-      default:
-        return null;
-    }
-  };
+      }
+      return null;
+
+    default:
+      return null;
+  }
+};
+
 
   const handlePresetSelect = (preset: "today" | "7days" | "30days" | "custom") => {
     setSelectedRange(preset);
@@ -138,52 +150,60 @@ export default function DateRangeFilter({ onRangeChange }: DateRangeFilterProps)
       </div>
 
       {selectedRange === "custom" && (
-        <div className="grid grid-cols-1  md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Start Date
-            </label>
-            <input
-              type="date"
-              value={customStart}
-              onChange={(e) => {
-                setCustomStart(e.target.value);
-                if (customEnd) {
-                  const range = {
-                    startDate: new Date(e.target.value),
-                    endDate: new Date(new Date(customEnd).setHours(23, 59, 59, 999)),
-                    label: `${new Date(e.target.value).toLocaleDateString("en-IN")} to ${new Date(customEnd).toLocaleDateString("en-IN")}`,
-                  };
-                  onRangeChange(range);
-                }
-              }}
-              className="w-full px-4 py-2 cursor-pointer rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-            />
-          </div>
+  <div className="mt-2 p-4 rounded-xl bg-white/40 dark:bg-black/20 border border-white/30 dark:border-white/10 backdrop-blur-md">
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              End Date
-            </label>
-            <input
-              type="date"
-              value={customEnd}
-              onChange={(e) => {
-                setCustomEnd(e.target.value);
-                if (customStart) {
-                  const range = {
-                    startDate: new Date(customStart),
-                    endDate: new Date(new Date(e.target.value).setHours(23, 59, 59, 999)),
-                    label: `${new Date(customStart).toLocaleDateString("en-IN")} to ${new Date(e.target.value).toLocaleDateString("en-IN")}`,
-                  };
-                  onRangeChange(range);
-                }
-              }}
-              className="w-full px-4 py-2 cursor-pointer rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-            />
-          </div>
-        </div>
-      )}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Start Date */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Start Date
+        </label>
+        <input
+          type="date"
+          value={customStart}
+          onChange={(e) => setCustomStart(e.target.value)}
+          className="w-full px-4 py-2.5 cursor-pointer rounded-lg border border-gray-300 dark:border-gray-600 
+          bg-white dark:bg-gray-800 text-gray-900 dark:text-white 
+          focus:ring-2 focus:ring-purple-500 focus:border-transparent transition shadow-sm"
+        />
+      </div>
+
+      {/* End Date */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          End Date
+        </label>
+        <input
+          type="date"
+          value={customEnd}
+          min={customStart || undefined}
+          onChange={(e) => setCustomEnd(e.target.value)}
+          className="w-full px-4 py-2.5 cursor-pointer rounded-lg border border-gray-300 dark:border-gray-600 
+          bg-white dark:bg-gray-800 text-gray-900 dark:text-white 
+          focus:ring-2 focus:ring-purple-500 focus:border-transparent transition shadow-sm"
+        />
+      </div>
+    </div>
+
+    {/* Apply Button */}
+    <div className="flex justify-end mt-5">
+      <button
+        disabled={!customStart || !customEnd}
+        onClick={() => handleCustomDateChange()}
+        className={`px-5 py-2.5 rounded-lg font-medium transition-all shadow-md
+          ${
+            customStart && customEnd
+              ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:scale-105 hover:shadow-lg"
+              : "bg-gray-300 dark:bg-gray-700 text-gray-500 cursor-not-allowed"
+          }`}
+      >
+        Apply
+      </button>
+    </div>
+
+  </div>
+)}
+
     </div>
   );
 }

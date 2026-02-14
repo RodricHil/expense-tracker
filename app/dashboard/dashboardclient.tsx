@@ -58,18 +58,29 @@ export default function ExpensesPage() {
     }
   };
 
-  const filterExpensesByRange = (allExpenses: Expense[], range: DateRange) => {
-    const filtered = allExpenses.filter((exp: Expense) => {
-      const expDate = new Date(exp.date);
-      expDate.setHours(0, 0, 0, 0);
-      return expDate >= range.startDate && expDate <= range.endDate;
-    });
+const filterExpensesByRange = (
+  allExpenses: Expense[],
+  range: DateRange
+) => {
+  const filtered = allExpenses.filter((exp: Expense) => {
+    const expDate = new Date(exp.date); // already UTC from MongoDB
 
-    setFilteredExpenses(filtered);
+    return (
+      expDate >= range.startDate &&
+      expDate <= range.endDate
+    );
+  });
 
-    const filtered_total = filtered.reduce((sum: number, exp: Expense) => sum + exp.amount, 0);
-    setFilteredSpent(filtered_total);
-  };
+  setFilteredExpenses(filtered);
+
+  const filtered_total = filtered.reduce(
+    (sum: number, exp: Expense) => sum + exp.amount,
+    0
+  );
+
+  setFilteredSpent(filtered_total);
+};
+
 
   const handleDateRangeChange = (range: DateRange) => {
     setDateRange(range);
@@ -124,7 +135,7 @@ export default function ExpensesPage() {
     return colors[type] || "from-gray-400 to-gray-600";
   };
 
-  
+
   return (
     <div className="min-h-screen pt-24 pb-12 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950">
       {/* Header */}
