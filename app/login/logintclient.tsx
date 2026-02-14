@@ -113,9 +113,6 @@ export default function LoginClient() {
         </div>
 
         {/* Bottom decoration */}
-        <div className="mt-8 text-center text-gray-400 text-sm">
-          <p>Build your financial awareness today</p>
-        </div>
       </div>
     </div>
   );

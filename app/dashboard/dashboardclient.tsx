@@ -8,6 +8,7 @@ import DateRangeFilter from "@/app/components/DateRangeFilter";
 import Pagination from "@/app/components/Pagination";
 import ConfirmationModal from "@/app/components/ConfirmationModal";
 import Link from "next/link";
+import Navbar from "@/app/components/Navbar";
 
 type Expense = {
   _id: string;
@@ -137,6 +138,8 @@ const filterExpensesByRange = (
 
 
   return (
+    <>
+    <Navbar />
     <div className="min-h-screen pt-24 pb-12 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950">
       {/* Header */}
       <div className="px-6 lg:px-12 3xl:px-60 mb-8">
@@ -157,12 +160,12 @@ const filterExpensesByRange = (
       </div>
 
       {/* Date Range Filter */}
-      <div className="px-6 lg:px-12 3xl:px-60">
+      <div className="px-6 lg:px-12 3xl:px-60 cursor-pointer ">
         <DateRangeFilter onRangeChange={handleDateRangeChange} />
       </div>
 
       {/* Stats Cards */}
-      <div className="px-6 lg:px-12 3xl:px-60 grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="px-6 lg:px-12 3xl:px-60 grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 cursor-pointer ">
         <div className="glass rounded-2xl p-6 backdrop-blur-xl border border-white/20 dark:border-white/10">
           <div className="flex items-center justify-between">
             <div>
@@ -343,5 +346,6 @@ const filterExpensesByRange = (
         />
       )}
     </div>
+    </>
   );
 }

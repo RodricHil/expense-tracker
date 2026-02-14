@@ -53,7 +53,7 @@ export default function Navbar() {
               <div className="relative">
                 <button
                   onClick={() => setProfileOpen(!profileOpen)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition border border-gray-200 dark:border-gray-700"
+                  className="flex items-center gap-2 px-3 py-2 cursor-pointer  rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition border border-gray-200 dark:border-gray-700"
                 >
                   {session.user?.image ? (
                     <Image
@@ -68,14 +68,14 @@ export default function Navbar() {
                       {session.user?.name?.charAt(0).toUpperCase() || "U"}
                     </div>
                   )}
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-200 hidden sm:inline">
+                  <span className="text-sm font-medium text-gray-700  dark:text-gray-200 hidden sm:inline">
                     {session.user?.name?.split(" ")[0]}
                   </span>
                   <FontAwesomeIcon icon={faChevronDown} className="w-3 h-3 text-gray-600 dark:text-gray-400" />
                 </button>
 
                 {profileOpen && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
+                  <div className="absolute cursor-pointer  right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
                     <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-gray-700 dark:to-gray-600">
                       <div className="flex items-center gap-3">
                         {session.user?.image ? (
@@ -102,13 +102,13 @@ export default function Navbar() {
                       </div>
                     </div>
 
-                    <div className="p-3">
+                    <div className="p-3 ">
                       <button
                         onClick={() => {
                           setShowLogoutConfirm(true);
                           setProfileOpen(false);
                         }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+                        className="w-full flex items-center cursor-pointer  gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
                       >
                         <FontAwesomeIcon icon={faRightFromBracket} className="w-4 h-4" /> Logout
                       </button>
@@ -179,7 +179,7 @@ export default function Navbar() {
                           setShowLogoutConfirm(true);
                           setProfileOpen(false);
                         }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+                        className="w-full cursor-pointer flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
                       >
                         <FontAwesomeIcon icon={faRightFromBracket} className="w-4 h-4" /> Logout
                       </button>
