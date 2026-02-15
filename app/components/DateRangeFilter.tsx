@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState,useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCalendarDays } from "@fortawesome/free-solid-svg-icons";
 
@@ -19,6 +19,8 @@ export default function DateRangeFilter({ onRangeChange }: DateRangeFilterProps)
   const [selectedRange, setSelectedRange] = useState<"today" | "7days" | "30days" | "custom">("30days");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+const startRef = useRef<HTMLInputElement>(null);
+const endRef = useRef<HTMLInputElement>(null);
 
 const getRangeFromPreset = (
   preset: "today" | "7days" | "30days" | "custom"
@@ -169,13 +171,16 @@ const handleClear = () => {
           Start Date
         </label>
         <input
-          type="date"
-          value={customStart}
-          onChange={(e) => setCustomStart(e.target.value)}
-          className="w-full px-4 py-2.5 cursor-pointer rounded-lg border border-gray-300 dark:border-gray-600 
-          bg-white dark:bg-gray-800 text-gray-900 dark:text-white 
-          focus:ring-2 focus:ring-purple-500 focus:border-transparent transition shadow-sm"
-        />
+  ref={startRef}
+  type="date"
+  value={customStart}
+  onChange={(e) => setCustomStart(e.target.value)}
+  onClick={() => startRef.current?.showPicker()}
+  className="w-full px-4 py-2.5 cursor-pointer rounded-lg border border-gray-300 dark:border-gray-600 
+  bg-white dark:bg-gray-800 text-gray-900 dark:text-white 
+  focus:ring-2 focus:ring-blue-500 focus:border-transparent transition shadow-sm"
+/>
+
       </div>
 
       {/* End Date */}
@@ -183,15 +188,17 @@ const handleClear = () => {
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           End Date
         </label>
-        <input
-          type="date"
-          value={customEnd}
-          min={customStart || undefined}
-          onChange={(e) => setCustomEnd(e.target.value)}
-          className="w-full px-4 py-2.5 cursor-pointer rounded-lg border border-gray-300 dark:border-gray-600 
-          bg-white dark:bg-gray-800 text-gray-900 dark:text-white 
-          focus:ring-2 focus:ring-purple-500 focus:border-transparent transition shadow-sm"
-        />
+       <input
+  ref={endRef}
+  type="date"
+  value={customEnd}
+  min={customStart || undefined}
+  onChange={(e) => setCustomEnd(e.target.value)}
+  onClick={() => endRef.current?.showPicker()}
+  className="w-full px-4 py-2.5 cursor-pointer rounded-lg border border-gray-300 dark:border-gray-600 
+  bg-white dark:bg-gray-800 text-gray-900 dark:text-white 
+  focus:ring-2 focus:ring-blue-500 focus:border-transparent transition shadow-sm"
+/>
       </div>
     </div>
 
@@ -199,7 +206,7 @@ const handleClear = () => {
     <div className="flex justify-end mt-5 gap-3">
   <button
     onClick={handleClear}
-    className="px-5 py-2.5 rounded-lg font-medium border border-gray-300 
+    className="px-5 py-2.5 rounded-lg cursor-pointer font-medium border border-gray-300 
     dark:border-gray-600 text-gray-700 dark:text-gray-300 
     hover:bg-gray-100 dark:hover:bg-gray-800 transition"
   >
@@ -212,7 +219,7 @@ const handleClear = () => {
     className={`px-5 py-2.5 rounded-lg font-medium transition-all shadow-md
       ${
         customStart && customEnd
-          ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:scale-105 hover:shadow-lg"
+          ? "bg-blue-600 cursor-pointer text-white hover:scale-105 hover:shadow-lg"
           : "bg-gray-300 dark:bg-gray-700 text-gray-500 cursor-not-allowed"
       }`}
   >
