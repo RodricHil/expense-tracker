@@ -107,10 +107,10 @@ export default function AddExpense() {
     <>
       <Navbar />
 
-      <div className="min-h-screen pt-20 pb-12 px-4 sm:px-6 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950">
+      <div className="min-h-screen pt-20 pb-12 px-4 sm:px-6">
         <div className="max-w-xl mx-auto">
 
-          <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-8">
+          <h1 className="text-3xl sm:text-4xl font-bold bg-blue-600 bg-clip-text text-transparent mb-8">
             Add Expense
           </h1>
 
@@ -132,7 +132,7 @@ export default function AddExpense() {
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-slate-600 
                 bg-white dark:bg-slate-800 
                 text-gray-900 dark:text-white 
-                focus:outline-none focus:ring-2 focus:ring-purple-500 
+                focus:outline-none focus:ring-2 focus:ring-blue-500 
                 transition"
                 />
               </div>
@@ -152,7 +152,7 @@ export default function AddExpense() {
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-slate-600 
                 bg-white dark:bg-slate-800 
                 text-gray-900 dark:text-white 
-                focus:outline-none focus:ring-2 focus:ring-purple-500 
+                focus:outline-none focus:ring-2 focus:ring-blue-500 
                 transition"
                 />
               </div>
@@ -172,7 +172,7 @@ export default function AddExpense() {
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-slate-600 
                 bg-white dark:bg-slate-800 
                 text-gray-900 dark:text-white 
-                focus:outline-none focus:ring-2 focus:ring-purple-500 
+                focus:outline-none focus:ring-2 focus:ring-blue-500 
                 transition"
                 />
                 {amountError && (
@@ -197,7 +197,7 @@ export default function AddExpense() {
                   border border-gray-300 dark:border-slate-600 
                   bg-white dark:bg-slate-800 
                   text-gray-900 dark:text-white 
-                  focus:outline-none focus:ring-2 focus:ring-purple-500 
+                  focus:outline-none focus:ring-2 focus:ring-blue-500 
                   transition cursor-pointer"
                   >
                     {categories.map((cat) => (
@@ -230,7 +230,7 @@ export default function AddExpense() {
                         type="button"
                         onClick={() => setForm({ ...form, mode })}
                         className={`py-3 rounded-lg font-medium transition-all duration-200 border cursor-pointer ${isActive
-                            ? "bg-purple-600 text-white border-purple-600 shadow-md"
+                            ? "bg-green-600 text-white border-green-600 shadow-md"
                             : "bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-700"
                           }`}
                       >
@@ -247,7 +247,7 @@ export default function AddExpense() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 
+                  className="flex-1 bg-indigo-500
                 text-white py-3 rounded-lg font-semibold 
                 flex items-center justify-center gap-2 
                 hover:scale-[1.02] transition 
@@ -268,9 +268,9 @@ export default function AddExpense() {
 
                 <Link
                   href="/dashboard"
-                  className="flex-1 sm:flex-none px-6 py-3 border border-gray-300 dark:border-slate-600 
+                  className="flex-1 sm:flex-none px-6 py-3 border 
                 rounded-lg text-center font-semibold 
-                hover:bg-gray-100 dark:hover:bg-slate-700 
+                border-blue-500 text-white bg-blue-600
                 transition cursor-pointer 
                 flex items-center justify-center gap-2"
                 >

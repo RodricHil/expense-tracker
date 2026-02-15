@@ -53,14 +53,14 @@ export default function LoginClient() {
         <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 md:p-12 border border-white/20 shadow-2xl">
           {/* Logo Section */}
           <div className="flex justify-center mb-10">
-            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-300">
+            <div className="h-16 w-16 rounded-2xl bg-blue-500  flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-300">
               <span className="text-2xl font-black text-white">ET</span>
             </div>
           </div>
 
           {/* Heading */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-white mb-2">Welcome Back</h1>
+            <h1 className="text-2xl md:text-4xl font-bold text-white mb-2">Welcome Back</h1>
             <p className="text-gray-300 text-sm md:text-base">
               Track your expenses with intelligence and ease
             </p>
@@ -69,7 +69,7 @@ export default function LoginClient() {
           {/* Features */}
           <div className="space-y-4 mb-10">
             <div className="flex items-start gap-3 text-gray-200">
-              <div className="mt-1 w-5 h-5 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+              <div className="mt-1 w-5 h-5 rounded-full bg-purple-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                 ✓
               </div>
               <div>
@@ -78,7 +78,7 @@ export default function LoginClient() {
               </div>
             </div>
             <div className="flex items-start gap-3 text-gray-200">
-              <div className="mt-1 w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+              <div className="mt-1 w-5 h-5 rounded-full bg-cyan-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                 ✓
               </div>
               <div>
@@ -87,7 +87,7 @@ export default function LoginClient() {
               </div>
             </div>
             <div className="flex items-start gap-3 text-gray-200">
-              <div className="mt-1 w-5 h-5 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+              <div className="mt-1 w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                 ✓
               </div>
               <div>
@@ -101,7 +101,7 @@ export default function LoginClient() {
           <button
             onClick={handleGoogleSignIn}
             disabled={isLoading}
-            className="w-full cursor-pointer bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition duration-300 flex items-center justify-center gap-3 shadow-lg hover:shadow-purple-500/50"
+            className="w-full text-sm md:text-xl cursor-pointer bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition duration-300 flex items-center justify-center gap-3 shadow-lg "
           >
             <FontAwesomeIcon icon={faGoogle} className="w-5 h-5" />
             <span>{isLoading ? "Signing in..." : "Sign in with Google"}</span>
@@ -109,7 +109,7 @@ export default function LoginClient() {
           </button>
 
           {/* Footer */}
-          <div className="mt-8 text-center text-xs text-gray-400">
+          <div className="mt-8 text-center text-xs text-gray-200">
             <p>By signing in, you agree to our Terms of Service</p>
             <p className="mt-1">and acknowledge our Privacy Policy</p>
           </div>

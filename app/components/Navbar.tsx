@@ -37,18 +37,18 @@ export default function Navbar() {
         <div className="px-6 lg:px-12 3xl:px-60 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/dashboard" className="flex items-center gap-3">
-              <span className="h-9 w-9 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center text-white font-bold">ET</span>
-              <div className="hidden sm:block">
-                <div className="font-semibold">Expense Tracker</div>
-                <div className="text-xs text-gray-600 dark:text-gray-300">Analytics · Simple · Fast</div>
+              <span className="h-9 w-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold">ET</span>
+              <div className="">
+                <div className="font-semibold text-white">Expense Tracker</div>
+                <div className="hidden sm:block text-sm text-gray-800 dark:text-gray-300">Analytics · Simple · Fast</div>
               </div>
             </Link>
           </div>
 
           <div className="hidden md:flex items-center gap-3">
-            <Link href="/dashboard" className="text-sm font-semibold text-gray-700 dark:text-gray-200 hover:underline flex items-center gap-2">
+            {/* <Link href="/dashboard" className="text-sm font-semibold text-gray-700 dark:text-gray-200 hover:underline flex items-center gap-2">
               <FontAwesomeIcon icon={faGauge} className="w-4 h-4" /> Dashboard
-            </Link>
+            </Link> */}
 
             {/* <Link href="/add-expenses" className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-sm transition">
               <FontAwesomeIcon icon={faPlus} className="w-4 h-4" /> Add Expense
@@ -69,7 +69,7 @@ export default function Navbar() {
                       className="w-6 h-6 rounded-full object-cover"
                     />
                   ) : (
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold">
                       {session.user?.name?.charAt(0).toUpperCase() || "U"}
                     </div>
                   )}
@@ -81,7 +81,7 @@ export default function Navbar() {
 
                 {profileOpen && (
                   <div className="absolute cursor-pointer  right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
-                    <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-gray-700 dark:to-gray-600">
+                    <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                       <div className="flex items-center gap-3">
                         {session.user?.image ? (
                           <Image
@@ -92,7 +92,7 @@ export default function Navbar() {
                             className="w-10 h-10 rounded-full object-cover"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold">
                             {session.user?.name?.charAt(0).toUpperCase() || "U"}
                           </div>
                         )}

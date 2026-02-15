@@ -100,13 +100,13 @@ export default function EditExpenseModal({
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 dark:border-slate-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+          <h2 className="text-xl font-bold text-white">
             Edit Expense
           </h2>
 
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition"
+            className="p-2 rounded-lg hover:bg-gray-100 cursor-pointer dark:hover:bg-slate-700 transition"
           >
             <FontAwesomeIcon
               icon={faXmark}
@@ -188,9 +188,8 @@ export default function EditExpenseModal({
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 bg-gradient-to-r cursor-pointer from-purple-600 to-pink-600 
-              hover:from-purple-700 hover:to-pink-700 
-              disabled:opacity-50 text-white font-semibold 
+              className="flex-1 bg-blue-500
+              disabled:opacity-50 text-white cursor-pointer  font-semibold 
               py-2 rounded-lg transition flex items-center justify-center gap-2"
             >
               {isLoading ? (
@@ -233,8 +232,8 @@ function InputField(props: any) {
         border border-gray-300 dark:border-slate-600 
         bg-white dark:bg-slate-800 
         text-gray-900 dark:text-white 
-        focus:outline-none focus:ring-2 focus:ring-purple-500 
-        transition"
+        focus:outline-none focus:ring-2 focus:ring-blue-500 
+        transition cursor-pointer"
       />
     </div>
   );
@@ -260,7 +259,7 @@ function SelectField({ label, name, value, onChange, options }: any) {
           border border-gray-300 dark:border-slate-600 
           bg-white dark:bg-slate-800 
           text-gray-900 dark:text-white 
-          focus:outline-none focus:ring-2 focus:ring-purple-500 
+          focus:outline-none focus:ring-2 focus:ring-blue-500 
           transition cursor-pointer"
         >
           {options.map((opt: any) => (
