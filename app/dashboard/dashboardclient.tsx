@@ -173,7 +173,7 @@ export default function ExpensesPage() {
           <div className="glass rounded-2xl p-6 backdrop-blur-xl border border-white/20 dark:border-white/10">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium mb-1">Total Spent (All Time)</p>
+                <p className="text-white text-sm font-medium mb-1">Total Spent (All Time)</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-white">₹ {totalSpent.toLocaleString()}</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-green-500 flex items-center justify-center">
@@ -185,7 +185,7 @@ export default function ExpensesPage() {
           <div className="glass rounded-2xl p-6 backdrop-blur-xl border border-white/20 dark:border-white/10">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-1">{dateRange.label}</p>
+                <p className="text-white text-sm font-medium mb-1">{dateRange.label}</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-white">₹ {filteredSpent.toLocaleString()}</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-cyan-500 flex items-center justify-center">
@@ -197,7 +197,7 @@ export default function ExpensesPage() {
           <div className="glass rounded-2xl p-6 backdrop-blur-xl border border-white/20 dark:border-white/10">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 dark:text-gray-400 text-sm font-medium mb-1">Entries in Range</p>
+                <p className="text-white text-sm font-medium mb-1">Entries in Range</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-white">{filteredExpenses.length}</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-amber-500 flex items-center justify-center">
