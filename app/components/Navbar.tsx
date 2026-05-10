@@ -1,6 +1,8 @@
 "use client";
+
 import Link from "next/link";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useNotification } from "@/app/components/elements/NotificationProvider";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -10,10 +12,17 @@ import {
   faRightFromBracket,
   faRightToBracket,
   faGauge,
+  faChartLine,
   faChevronDown,
 } from "@fortawesome/free-solid-svg-icons";
 import Image from "next/image";
 import ConfirmationModal from "./ConfirmationModal";
+
+const navLinks = [
+  { href: "/dashboard", label: "Dashboard", icon: faGauge },
+  { href: "/analytics", label: "Analytics", icon: faChartLine },
+  { href: "/add-expenses", label: "Add Expense", icon: faPlus },
+];
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -22,66 +31,81 @@ export default function Navbar() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { data: session } = useSession();
   const { showNotification } = useNotification();
+  const pathname = usePathname() || "/";
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
-    try {
-      showNotification("Logged out successfully", "success");
-    } catch (e) {}
+    showNotification("Logged out successfully", "success");
     await signOut({ callbackUrl: "/" });
   };
 
+  const isActive = (href: string) => {
+    if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";
+    return pathname.startsWith(href);
+  };
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-40">
-      <nav className="backdrop-blur-sm bg-white/60 dark:bg-black/60 border-b border-gray-200 dark:border-gray-800">
-        <div className="px-6 lg:px-12 3xl:px-60 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+    <header className="fixed inset-x-0 top-0 z-50 shadow-sm">
+      <nav className="backdrop-blur-xl bg-white/92 dark:bg-slate-950/92 border-b border-slate-200/80 dark:border-slate-800">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
             <Link href="/dashboard" className="flex items-center gap-3">
-              <span className="h-9 w-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold">ET</span>
-              <div className="">
-                <div className="font-semibold text-white">Expense Tracker</div>
-                <div className="hidden sm:block text-sm text-gray-800 dark:text-gray-300">Analytics · Simple · Fast</div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-linear-to-br from-sky-600 to-violet-600 text-lg font-black text-white shadow-lg shadow-sky-500/20">
+                ET
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Expense Tracker</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Secure spending analytics</p>
               </div>
             </Link>
           </div>
 
-          <div className="hidden md:flex items-center gap-3">
-            {/* <Link href="/dashboard" className="text-sm font-semibold text-gray-700 dark:text-gray-200 hover:underline flex items-center gap-2">
-              <FontAwesomeIcon icon={faGauge} className="w-4 h-4" /> Dashboard
-            </Link> */}
+          <div className="hidden md:flex items-center gap-2">
+            {navLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={
+                  `inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-medium transition ` +
+                  (isActive(item.href)
+                    ? "bg-slate-900 text-white shadow-lg shadow-slate-900/10"
+                    : "text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white")
+                }
+              >
+                <FontAwesomeIcon icon={item.icon} className="w-4 h-4" />
+                {item.label}
+              </Link>
+            ))}
+          </div>
 
-            {/* <Link href="/add-expenses" className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-sm transition">
-              <FontAwesomeIcon icon={faPlus} className="w-4 h-4" /> Add Expense
-            </Link> */}
-
+          <div className="flex items-center gap-3">
             {session ? (
               <div className="relative">
                 <button
+                  type="button"
                   onClick={() => setProfileOpen(!profileOpen)}
-                  className="flex items-center gap-2 px-3 py-2 cursor-pointer  rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition border border-gray-200 dark:border-gray-700"
+                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-900"
                 >
                   {session.user?.image ? (
                     <Image
                       src={session.user.image}
                       alt={session.user.name || "User"}
-                      width={24}
-                      height={24}
-                      className="w-6 h-6 rounded-full object-cover"
+                      width={28}
+                      height={28}
+                      className="h-7 w-7 rounded-full object-cover"
                     />
                   ) : (
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-white">
                       {session.user?.name?.charAt(0).toUpperCase() || "U"}
                     </div>
                   )}
-                  <span className="text-sm font-medium text-gray-700  dark:text-gray-200 hidden sm:inline">
-                    {session.user?.name?.split(" ")[0]}
-                  </span>
-                  <FontAwesomeIcon icon={faChevronDown} className="w-3 h-3 text-gray-600 dark:text-gray-400" />
+                  <span className="hidden sm:inline">{session.user?.name?.split(" ")[0]}</span>
+                  <FontAwesomeIcon icon={faChevronDown} className="w-3 h-3 text-slate-500 dark:text-slate-400" />
                 </button>
 
                 {profileOpen && (
-                  <div className="absolute cursor-pointer  right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
-                    <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                  <div className="absolute right-0 z-50 mt-2 w-72 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/10 dark:border-slate-800 dark:bg-slate-950">
+                    <div className="p-4 border-b border-slate-200/70 dark:border-slate-800">
                       <div className="flex items-center gap-3">
                         {session.user?.image ? (
                           <Image
@@ -89,123 +113,81 @@ export default function Navbar() {
                             alt={session.user.name || "User"}
                             width={40}
                             height={40}
-                            className="w-10 h-10 rounded-full object-cover"
+                            className="h-10 w-10 rounded-2xl object-cover"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-800 text-base font-semibold text-white">
                             {session.user?.name?.charAt(0).toUpperCase() || "U"}
                           </div>
                         )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                            {session.user?.name}
-                          </p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                            {session.user?.email}
-                          </p>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{session.user?.name}</p>
+                          <p className="truncate text-xs text-slate-500 dark:text-slate-400">{session.user?.email}</p>
                         </div>
                       </div>
                     </div>
-
-                    <div className="p-3 ">
+                    <div className="p-3">
                       <button
+                        type="button"
                         onClick={() => {
                           setShowLogoutConfirm(true);
                           setProfileOpen(false);
                         }}
-                        className="w-full flex items-center cursor-pointer  gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-400 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-900/80 dark:text-rose-200 dark:hover:bg-rose-800"
                       >
-                        <FontAwesomeIcon icon={faRightFromBracket} className="w-4 h-4" /> Logout
+                        <FontAwesomeIcon icon={faRightFromBracket} className="w-4 h-4" />
+                        Logout
                       </button>
                     </div>
                   </div>
                 )}
               </div>
             ) : (
-              <Link href="/login" className="inline-flex items-center gap-2 px-3 py-2 border border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-50 transition text-sm">
-                <FontAwesomeIcon icon={faRightToBracket} className="w-4 h-4" /> Login
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-slate-900/10 transition hover:bg-slate-800"
+              >
+                <FontAwesomeIcon icon={faRightToBracket} className="w-4 h-4" />
+                Login
               </Link>
             )}
-          </div>
 
-          <div className="md:hidden flex items-center gap-2">
-            {session && (
-              <div className="relative">
-                <button
-                  onClick={() => setProfileOpen(!profileOpen)}
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition"
-                >
-                  {session.user?.image ? (
-                    <Image
-                      src={session.user.image}
-                      alt={session.user.name || "User"}
-                      width={24}
-                      height={24}
-                      className="w-6 h-6 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
-                      {session.user?.name?.charAt(0).toUpperCase() || "U"}
-                    </div>
-                  )}
-                </button>
-
-                {profileOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
-                    <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-linear-to-r from-purple-50 to-pink-50 dark:from-gray-700 dark:to-gray-600">
-                      <div className="flex items-center gap-3">
-                        {session.user?.image ? (
-                          <Image
-                            src={session.user.image}
-                            alt={session.user.name || "User"}
-                            width={40}
-                            height={40}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
-                            {session.user?.name?.charAt(0).toUpperCase() || "U"}
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                            {session.user?.name}
-                          </p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                            {session.user?.email}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-3">
-                      <button
-                        onClick={() => {
-                          setShowLogoutConfirm(true);
-                          setProfileOpen(false);
-                        }}
-                        className="w-full cursor-pointer flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
-                      >
-                        <FontAwesomeIcon icon={faRightFromBracket} className="w-4 h-4" /> Logout
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            <button onClick={() => setOpen((v) => !v)} aria-label="menu" className="p-2 rounded-md text-gray-700 dark:text-gray-200">
+            <button
+              type="button"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900 md:hidden"
+              onClick={() => setOpen((value) => !value)}
+              aria-label="Toggle menu"
+            >
               <FontAwesomeIcon icon={faBars} className="w-5 h-5" />
             </button>
           </div>
         </div>
 
         {open && (
-          <div className="md:hidden border-t border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-black/70 backdrop-blur-sm">
-            <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col gap-3">
-              <Link href="/dashboard" className="text-sm font-medium text-gray-700 dark:text-gray-200">Dashboard</Link>
-              <Link href="/add-expenses" className="text-sm font-medium text-indigo-600">Add Expense</Link>
+          <div className="border-t border-slate-200/80 bg-white/95 px-4 py-4 dark:border-slate-800 dark:bg-slate-950/95 md:hidden">
+            <div className="space-y-2">
+              {navLinks.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={
+                    `flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition ` +
+                    (isActive(item.href)
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900")
+                  }
+                >
+                  <FontAwesomeIcon icon={item.icon} className="w-4 h-4" />
+                  {item.label}
+                </Link>
+              ))}
               {!session && (
-                <Link href="/login" className="text-sm text-indigo-600">Login</Link>
+                <Link
+                  href="/login"
+                  className="block rounded-2xl bg-slate-900 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-slate-800"
+                >
+                  Login
+                </Link>
               )}
             </div>
           </div>

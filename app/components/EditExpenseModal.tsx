@@ -100,7 +100,7 @@ export default function EditExpenseModal({
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 dark:border-slate-700">
-          <h2 className="text-xl font-bold text-white">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
             Edit Expense
           </h2>
 

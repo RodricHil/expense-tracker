@@ -1,6 +1,6 @@
 "use client";
 
-import { useState,useRef } from "react";
+import { useState, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCalendarDays } from "@fortawesome/free-solid-svg-icons";
 
@@ -14,74 +14,73 @@ type DateRangeFilterProps = {
   onRangeChange: (range: DateRange) => void;
 };
 
+const formatLabel = (dateString: string) =>
+  new Date(dateString).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+
 export default function DateRangeFilter({ onRangeChange }: DateRangeFilterProps) {
-  const today = new Date();
-  const [selectedRange, setSelectedRange] = useState<"today" | "7days" | "30days" | "custom">("30days");
+  const [selectedRange, setSelectedRange] = useState<
+    "today" | "7days" | "30days" | "month" | "year" | "custom"
+  >("30days");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
-const startRef = useRef<HTMLInputElement>(null);
-const endRef = useRef<HTMLInputElement>(null);
+  const startRef = useRef<HTMLInputElement>(null);
+  const endRef = useRef<HTMLInputElement>(null);
 
-const getRangeFromPreset = (
-  preset: "today" | "7days" | "30days" | "custom"
-) => {
-  const endDate = new Date();
-  endDate.setUTCHours(23, 59, 59, 999); // ✅ UTC
+  const getRangeFromPreset = (
+    preset: "today" | "7days" | "30days" | "month" | "year" | "custom"
+  ) => {
+    const endDate = new Date();
+    endDate.setUTCHours(23, 59, 59, 999);
 
-  let startDate = new Date();
+    let startDate = new Date(endDate);
 
-  switch (preset) {
-    case "today":
-      startDate = new Date();
-      startDate.setUTCHours(0, 0, 0, 0); // ✅ UTC
-      return {
-        startDate,
-        endDate,
-        label: "Today",
-      };
+    switch (preset) {
+      case "today":
+        startDate.setUTCHours(0, 0, 0, 0);
+        return { startDate, endDate, label: "Today" };
 
-    case "7days":
-      startDate = new Date(endDate);
-      startDate.setUTCDate(startDate.getUTCDate() - 7); // ✅ UTC
-      startDate.setUTCHours(0, 0, 0, 0);
-      return {
-        startDate,
-        endDate,
-        label: "Last 7 Days",
-      };
+      case "7days":
+        startDate.setUTCDate(startDate.getUTCDate() - 6);
+        startDate.setUTCHours(0, 0, 0, 0);
+        return { startDate, endDate, label: "Last 7 Days" };
 
-    case "30days":
-      startDate = new Date(endDate);
-      startDate.setUTCDate(startDate.getUTCDate() - 30); // ✅ UTC
-      startDate.setUTCHours(0, 0, 0, 0);
-      return {
-        startDate,
-        endDate,
-        label: "Last 30 Days",
-      };
+      case "30days":
+        startDate.setUTCDate(startDate.getUTCDate() - 29);
+        startDate.setUTCHours(0, 0, 0, 0);
+        return { startDate, endDate, label: "Last 30 Days" };
 
-    case "custom":
-      if (customStart && customEnd) {
-        const start = new Date(customStart + "T00:00:00.000Z"); // ✅ force UTC
-        const end = new Date(customEnd + "T23:59:59.999Z"); // ✅ force UTC
+      case "month":
+        startDate = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), 1));
+        return { startDate, endDate, label: "This Month" };
 
-        return {
-          startDate: start,
-          endDate: end,
-          label: `${new Date(customStart).toLocaleDateString(
-            "en-IN"
-          )} to ${new Date(customEnd).toLocaleDateString("en-IN")}`,
-        };
-      }
-      return null;
+      case "year":
+        startDate = new Date(Date.UTC(endDate.getUTCFullYear(), 0, 1));
+        return { startDate, endDate, label: "This Year" };
 
-    default:
-      return null;
-  }
-};
+      case "custom":
+        if (customStart && customEnd) {
+          const start = new Date(`${customStart}T00:00:00.000Z`);
+          const end = new Date(`${customEnd}T23:59:59.999Z`);
+          return {
+            startDate: start,
+            endDate: end,
+            label: `${formatLabel(customStart)} to ${formatLabel(customEnd)}`,
+          };
+        }
+        return null;
 
+      default:
+        return null;
+    }
+  };
 
-  const handlePresetSelect = (preset: "today" | "7days" | "30days" | "custom") => {
+  const handlePresetSelect = (
+    preset: "today" | "7days" | "30days" | "month" | "year" | "custom"
+  ) => {
     setSelectedRange(preset);
     const range = getRangeFromPreset(preset);
     if (range) {
@@ -90,147 +89,103 @@ const getRangeFromPreset = (
   };
 
   const handleCustomDateChange = () => {
-    if (customStart && customEnd) {
-      const range = getRangeFromPreset("custom");
-      if (range) {
-        onRangeChange(range);
-      }
+    if (!customStart || !customEnd) return;
+    const range = getRangeFromPreset("custom");
+    if (range) onRangeChange(range);
+  };
+
+  const handleClear = () => {
+    setCustomStart("");
+    setCustomEnd("");
+    setSelectedRange("30days");
+    const defaultRange = getRangeFromPreset("30days");
+    if (defaultRange) {
+      onRangeChange(defaultRange);
     }
   };
-const handleClear = () => {
-  setCustomStart("");
-  setCustomEnd("");
-  setSelectedRange("30days"); // default
-
-  const defaultRange = getRangeFromPreset("30days");
-  if (defaultRange) {
-    onRangeChange(defaultRange);
-  }
-};
 
   return (
-    <div className="glass rounded-2xl p-6 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-lg mb-8">
-      <div className="flex items-center gap-2 mb-4">
-        <FontAwesomeIcon icon={faCalendarDays} className="text-purple-600 dark:text-purple-400 w-5 h-5" />
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Filter by Date Range</h3>
+    <div className="glass rounded-4xl border border-white/20 bg-white/80 p-6 shadow-xl backdrop-blur-xl dark:bg-slate-950/80 dark:border-slate-800">
+      <div className="flex items-center gap-3 text-slate-900 dark:text-slate-100 mb-4">
+        <FontAwesomeIcon icon={faCalendarDays} className="h-5 w-5 text-violet-600" />
+        <h3 className="text-lg font-semibold">Refine your date range</h3>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <button
-          onClick={() => handlePresetSelect("today")}
-          className={`py-2 px-4 rounded-lg cursor-pointer font-medium transition-all ${
-            selectedRange === "today"
-              ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg"
-              : "border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-          }`}
-        >
-          Today
-        </button>
-
-        <button
-          onClick={() => handlePresetSelect("7days")}
-          className={`py-2 px-4 rounded-lg cursor-pointer font-medium transition-all ${
-            selectedRange === "7days"
-              ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg"
-              : "border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-          }`}
-        >
-          7 Days
-        </button>
-
-        <button
-          onClick={() => handlePresetSelect("30days")}
-          className={`py-2 px-4 rounded-lg cursor-pointer font-medium transition-all ${
-            selectedRange === "30days"
-              ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg"
-              : "border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-          }`}
-        >
-          30 Days
-        </button>
-
-        <button
-          onClick={() => handlePresetSelect("custom")}
-          className={`py-2 px-4 rounded-lg cursor-pointer font-medium transition-all ${
-            selectedRange === "custom"
-              ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg"
-              : "border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-          }`}
-        >
-          Custom Range
-        </button>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { id: "today", label: "Today" },
+          { id: "7days", label: "7 Days" },
+          { id: "30days", label: "30 Days" },
+          { id: "month", label: "This Month" },
+          { id: "year", label: "This Year" },
+          { id: "custom", label: "Custom" },
+        ].map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => handlePresetSelect(item.id as any)}
+            className={
+              `rounded-2xl px-4 py-3 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-violet-500 ` +
+              (selectedRange === item.id
+                ? "bg-gradient-to-r from-violet-600 to-sky-500 text-white shadow-lg"
+                : "border border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600")
+            }
+          >
+            {item.label}
+          </button>
+        ))}
       </div>
 
       {selectedRange === "custom" && (
-  <div className="mt-2 p-4 rounded-xl bg-white/40 dark:bg-black/20 border border-white/30 dark:border-white/10 backdrop-blur-md">
-
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {/* Start Date */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Start Date
-        </label>
-        <input
-  ref={startRef}
-  type="date"
-  value={customStart}
-  onChange={(e) => setCustomStart(e.target.value)}
-  onClick={() => startRef.current?.showPicker()}
-  className="w-full px-4 py-2.5 cursor-pointer rounded-lg border border-gray-300 dark:border-gray-600 
-  bg-white dark:bg-gray-800 text-gray-900 dark:text-white 
-  focus:ring-2 focus:ring-blue-500 focus:border-transparent transition shadow-sm"
-/>
-
-      </div>
-
-      {/* End Date */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          End Date
-        </label>
-       <input
-  ref={endRef}
-  type="date"
-  value={customEnd}
-  min={customStart || undefined}
-  onChange={(e) => setCustomEnd(e.target.value)}
-  onClick={() => endRef.current?.showPicker()}
-  className="w-full px-4 py-2.5 cursor-pointer rounded-lg border border-gray-300 dark:border-gray-600 
-  bg-white dark:bg-gray-800 text-gray-900 dark:text-white 
-  focus:ring-2 focus:ring-blue-500 focus:border-transparent transition shadow-sm"
-/>
-      </div>
-    </div>
-
-    {/* Apply Button */}
-    <div className="flex justify-end mt-5 gap-3">
-  <button
-    onClick={handleClear}
-    className="px-5 py-2.5 rounded-lg cursor-pointer font-medium border border-gray-300 
-    dark:border-gray-600 text-gray-700 dark:text-gray-300 
-    hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-  >
-    Clear
-  </button>
-
-  <button
-    disabled={!customStart || !customEnd}
-    onClick={() => handleCustomDateChange()}
-    className={`px-5 py-2.5 rounded-lg font-medium transition-all shadow-md
-      ${
-        customStart && customEnd
-          ? "bg-blue-600 cursor-pointer text-white hover:scale-105 hover:shadow-lg"
-          : "bg-gray-300 dark:bg-gray-700 text-gray-500 cursor-not-allowed"
-      }`}
-  >
-    Apply
-  </button>
-</div>
-
-
-  </div>
-)}
-
+        <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-900">
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="space-y-2">
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Start Date</span>
+              <input
+                ref={startRef}
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                onClick={() => startRef.current?.showPicker()}
+                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+              />
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">End Date</span>
+              <input
+                ref={endRef}
+                type="date"
+                value={customEnd}
+                min={customStart || undefined}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                onClick={() => endRef.current?.showPicker()}
+                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+              />
+            </label>
+          </div>
+          <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={handleClear}
+              className="rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={handleCustomDateChange}
+              disabled={!customStart || !customEnd}
+              className={`rounded-2xl px-5 py-3 text-sm font-semibold transition ${
+                customStart && customEnd
+                  ? "bg-slate-900 text-white hover:bg-slate-800"
+                  : "bg-slate-300 text-slate-500 cursor-not-allowed"
+              }`}
+            >
+              Apply custom range
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -121,6 +121,15 @@ export default function ExpensesPage() {
     }
   };
 
+  const categoryTotals = filteredExpenses.reduce<Record<string, number>>((acc, exp) => {
+    acc[exp.type] = (acc[exp.type] || 0) + exp.amount;
+    return acc;
+  }, {});
+
+  const topCategories = Object.entries(categoryTotals)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4);
+
   const getExpenseTypeColor = (type: string): string => {
     const colors: Record<string, string> = {
       food: "from-orange-400 to-orange-600",
@@ -207,6 +216,57 @@ export default function ExpensesPage() {
           </div>
         </div>
 
+        <div className="px-6 lg:px-12 3xl:px-60 grid gap-6 mb-8 md:grid-cols-[1.4fr_0.8fr]">
+          <div className="glass rounded-3xl p-6 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-xl">
+            <div className="flex items-center justify-between gap-4 mb-5">
+              <div>
+                <p className="text-sm uppercase tracking-[0.24em] text-slate-300">Top Categories</p>
+                <h3 className="text-2xl font-semibold text-white">Spending insights</h3>
+              </div>
+              <Link
+                href="/analytics"
+                className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-950/20 transition hover:bg-slate-800"
+              >
+                View Analytics
+              </Link>
+            </div>
+            <div className="space-y-4">
+              {topCategories.length === 0 ? (
+                <p className="text-slate-400">No expense categories available in the selected range.</p>
+              ) : (
+                topCategories.map(([category, amount], idx) => (
+                  <div key={category} className="space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-medium text-slate-200 capitalize">{category}</p>
+                      <p className="text-sm font-semibold text-white">₹ {amount.toLocaleString()}</p>
+                    </div>
+                    <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-linear-to-r from-indigo-500 to-cyan-400"
+                        style={{ width: `${Math.min((amount / Math.max(filteredSpent, 1)) * 100, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="glass rounded-3xl p-6 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-xl">
+            <p className="text-sm uppercase tracking-[0.24em] text-slate-300 mb-3">Range summary</p>
+            <div className="space-y-4 text-slate-200">
+              <div className="rounded-3xl border border-slate-700/70 bg-slate-950/40 p-4">
+                <p className="text-sm text-slate-400">Average spend per day</p>
+                <p className="mt-2 text-2xl font-semibold">₹ {filteredExpenses.length ? Math.round(filteredSpent / Math.max((dateRange.endDate.getTime() - dateRange.startDate.getTime()) / (1000 * 60 * 60 * 24) + 1, 1)).toLocaleString() : 0}</p>
+              </div>
+              <div className="rounded-3xl border border-slate-700/70 bg-slate-950/40 p-4">
+                <p className="text-sm text-slate-400">Selected range</p>
+                <p className="mt-2 text-lg font-semibold text-white">{dateRange.label}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Main Content */}
         <div className="px-6 lg:px-12 3xl:px-60">
           <div className="glass rounded-2xl py-6 px-4  backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-xl">
@@ -216,7 +276,7 @@ export default function ExpensesPage() {
                 Expenses <br />({dateRange.label})
               </h2>
               <h2 className="text-xl md:text-2xl font-bold hidden md:flex text-white items-base gap-2">
-                <FontAwesomeIcon icon={faChartPie} className="text-purple-600 w-6 h-6 mt-2" />
+                <FontAwesomeIcon icon={faChartPie} className="text-purple-600 w-6 h-6 mt-1" />
                 Expenses ({dateRange.label})
               </h2>
               <div className="flex justify-end">
@@ -276,7 +336,7 @@ export default function ExpensesPage() {
                           </td>
                           <td className="py-4 px-4 text-gray-700 dark:text-gray-300">{exp.description}</td>
                           <td className="py-4 px-4">
-                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium text-white bg-gradient-to-r ${getExpenseTypeColor(exp.type)}`}>
+                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium text-white bg-linear-to-r ${getExpenseTypeColor(exp.type)}`}>
                               {exp.type}
                             </span>
                           </td>
@@ -351,7 +411,7 @@ export default function ExpensesPage() {
                             <td className="py-4 px-4 text-gray-300">{exp.description}</td>
 
                             <td className="py-4 px-4">
-                              <span className={`px-3 py-1 rounded-full text-sm text-white bg-gradient-to-r ${getExpenseTypeColor(exp.type)}`}>
+                              <span className={`px-3 py-1 rounded-full text-sm text-white bg-linear-to-r ${getExpenseTypeColor(exp.type)}`}>
                                 {exp.type}
                               </span>
                             </td>
@@ -404,7 +464,7 @@ export default function ExpensesPage() {
                           </p>
 
                           <div className="flex justify-between items-center mt-3">
-                            <span className={`px-3 py-1 rounded-full text-xs text-white bg-gradient-to-r ${getExpenseTypeColor(exp.type)}`}>
+                            <span className={`px-3 py-1 rounded-full text-xs text-white bg-linear-to-r ${getExpenseTypeColor(exp.type)}`}>
                               {exp.type}
                             </span>
 
