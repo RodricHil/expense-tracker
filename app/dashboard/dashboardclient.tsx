@@ -178,7 +178,7 @@ export default function ExpensesPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="px-6 lg:px-12 3xl:px-60 grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 cursor-pointer ">
+        <div className="px-6 lg:px-12 3xl:px-60 grid grid-cols-1 md:grid-cols-3 gap-6 my-8 cursor-pointer ">
           <div className="glass rounded-2xl p-6 backdrop-blur-xl border border-white/20 dark:border-white/10">
             <div className="flex items-center justify-between">
               <div>

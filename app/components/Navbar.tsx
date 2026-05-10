@@ -47,7 +47,7 @@ export default function Navbar() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 shadow-sm">
       <nav className="backdrop-blur-xl bg-white/92 dark:bg-slate-950/92 border-b border-slate-200/80 dark:border-slate-800">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+        <div className="mx-auto flex  items-center justify-between py-3 px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-linear-to-br from-sky-600 to-violet-600 text-lg font-black text-white shadow-lg shadow-sky-500/20">

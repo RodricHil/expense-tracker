@@ -166,27 +166,54 @@ export default function AnalyticsPage() {
     <>
       <Navbar />
       <div className="min-h-screen bg-slate-950 pt-24 pb-16 text-slate-100">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="px-6 lg:px-8">
           <div className="mb-8 rounded-[2rem] border border-slate-800 bg-slate-900/80 p-8 shadow-2xl shadow-slate-950/20 backdrop-blur-xl">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-              <div>
+
+              {/* LEFT CONTENT */}
+              <div className="max-w-xl">
                 <p className="text-sm uppercase tracking-[0.26em] text-sky-400">Analytics</p>
-                <h1 className="mt-2 text-4xl font-black tracking-tight text-white">Spending analytics with modern insights</h1>
-                <p className="mt-3 max-w-2xl text-slate-300">See your daily, weekly, monthly, yearly, and custom spending trends with category and mode breakdowns.</p>
+                <h1 className="mt-2 text-4xl font-black tracking-tight text-white">
+                  Spending analytics with modern insights
+                </h1>
+                <p className="mt-3 text-slate-300">
+                  See your daily, weekly, monthly, yearly, and custom spending trends with category and mode breakdowns.
+                </p>
               </div>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="rounded-3xl border border-slate-800 bg-slate-950/80 p-5">
-                  <p className="text-xs uppercase tracking-[0.26em] text-slate-500">Total spent</p>
-                  <p className="mt-3 text-3xl font-semibold text-white">₹ {totalSpent.toLocaleString()}</p>
+
+              {/* RIGHT CARDS */}
+              <div className="grid w-full gap-4 sm:grid-cols-3 lg:max-w-xl">
+
+                {/* CARD */}
+                <div className="flex flex-col justify-between rounded-3xl border border-slate-800 bg-slate-950/80 p-5 h-28">
+                  <p className="text-xs font-bold uppercase tracking-[0.26em] text-slate-500">
+                    Total spent
+                  </p>
+                  <p className="text-xl font-semibold text-white whitespace-nowrap">
+                    ₹ {totalSpent.toLocaleString()}
+                  </p>
                 </div>
-                <div className="rounded-3xl border border-slate-800 bg-slate-950/80 p-5">
-                  <p className="text-xs uppercase tracking-[0.26em] text-slate-500">Average / day</p>
-                  <p className="mt-3 text-3xl font-semibold text-white">₹ {averageDaily.toLocaleString()}</p>
+
+                {/* CARD */}
+                <div className="flex flex-col justify-between rounded-3xl border border-slate-800 bg-slate-950/80 p-5 h-28">
+                  <p className="text-xs font-bold uppercase tracking-[0.26em] text-slate-500">
+                    Average / day
+                  </p>
+                  <p className="text-xl font-semibold text-white whitespace-nowrap">
+                    ₹ {averageDaily.toLocaleString()}
+                  </p>
                 </div>
-                <div className="rounded-3xl border border-slate-800 bg-slate-950/80 p-5">
-                  <p className="text-xs uppercase tracking-[0.26em] text-slate-500">Timeframe</p>
-                  <p className="mt-3 text-3xl font-semibold text-white">{dateRange.label}</p>
+
+                {/* CARD */}
+                <div className="flex flex-col justify-between rounded-3xl border border-slate-800 bg-slate-950/80 p-5 h-28">
+                  <p className="text-xs font-bold uppercase tracking-[0.26em] text-slate-500">
+                    Timeframe
+                  </p>
+                  <p className="text-xl font-semibold text-white truncate">
+                    {dateRange.label}
+                  </p>
                 </div>
+
               </div>
             </div>
           </div>
@@ -204,11 +231,10 @@ export default function AnalyticsPage() {
                       key={option}
                       type="button"
                       onClick={() => setTimeframe(option)}
-                      className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
-                        timeframe === option
+                      className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${timeframe === option
                           ? "bg-slate-100 text-slate-950"
                           : "border border-slate-700 text-slate-300 hover:border-slate-500 hover:text-white"
-                      }`}
+                        }`}
                     >
                       {option}
                     </button>
@@ -317,11 +343,11 @@ export default function AnalyticsPage() {
                           <Cell key={entry.mode} fill={palette[index % palette.length]} />
                         ))}
                       </Pie>
-<Tooltip
-  contentStyle={{ backgroundColor: "#0F172A", border: "1px solid #334155" }}
-  labelStyle={{ color: "#F8FAFC" }}
-  itemStyle={{ color: "#F8FAFC" }}
-/>                      <Legend verticalAlign="bottom" wrapperStyle={{ color: "#94A3B8" }} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: "#0F172A", border: "1px solid #334155" }}
+                        labelStyle={{ color: "#F8FAFC" }}
+                        itemStyle={{ color: "#F8FAFC" }}
+                      />                      <Legend verticalAlign="bottom" wrapperStyle={{ color: "#94A3B8" }} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -329,7 +355,7 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          <div className="rounded-[2rem] border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-slate-950/20">
+          <div className="rounded-[2rem] border border-slate-800 bg-slate-900/80 mt-6 p-6 shadow-2xl shadow-slate-950/20">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm uppercase tracking-[0.26em] text-slate-400">Insights</p>
