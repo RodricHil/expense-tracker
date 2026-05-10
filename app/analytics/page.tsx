@@ -160,7 +160,7 @@ export default function AnalyticsPage() {
     return Math.round(totalSpent / diffDays);
   }, [totalSpent, dateRange]);
 
-  const topCategories = categoryTotals.slice(0, 5);
+  const topCategories = categoryTotals.slice(0, 8);
 
   return (
     <>
@@ -218,14 +218,13 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          <div className="mb-8 grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
-            <div className="rounded-[2rem] border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-slate-950/20">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.26em] text-slate-400">Date range</p>
-                  <h2 className="mt-2 text-2xl font-semibold text-white">Refine your window</h2>
-                </div>
-                <div className="flex flex-wrap gap-3">
+          <div className="rounded-[2rem] border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-slate-950/20">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.26em] text-slate-400">Date range</p>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Refine your window</h2>
+              </div>
+              {/* <div className="flex flex-wrap gap-3">
                   {timeframeOptions.map((option) => (
                     <button
                       key={option}
@@ -239,40 +238,15 @@ export default function AnalyticsPage() {
                       {option}
                     </button>
                   ))}
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <DateRangeFilter onRangeChange={setDateRange} />
-              </div>
+                </div> */}
             </div>
 
-            <div className="rounded-[2rem] border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-slate-950/20">
-              <p className="text-sm uppercase tracking-[0.26em] text-slate-400">Top categories</p>
-              <div className="mt-5 space-y-4">
-                {topCategories.length === 0 ? (
-                  <p className="text-slate-400">No expenses to analyze for this range.</p>
-                ) : (
-                  topCategories.map(([category, amount], index) => {
-                    const ratio = totalSpent ? (amount / totalSpent) * 100 : 0;
-                    return (
-                      <div key={category} className="space-y-2 rounded-3xl border border-slate-800 bg-slate-950/70 p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="font-medium capitalize text-white">{category}</p>
-                          <p className="text-sm text-slate-400">₹ {amount.toLocaleString()}</p>
-                        </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-slate-800">
-                          <div className="h-full rounded-full bg-linear-to-r from-sky-500 to-cyan-400" style={{ width: `${Math.min(ratio, 100)}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+            <div className="mt-6">
+              <DateRangeFilter onRangeChange={setDateRange} />
             </div>
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="grid gap-6 my-6">
             <div className="rounded-[2rem] border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-slate-950/20">
               <div className="flex items-center justify-between gap-4">
                 <div>
@@ -307,6 +281,37 @@ export default function AnalyticsPage() {
                   )}
                 </div>
               )}
+            </div>
+
+
+          </div>
+
+
+          <div className="mb-8 grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
+
+
+            <div className="rounded-[2rem] border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-slate-950/20">
+              <p className="text-sm uppercase tracking-[0.26em] text-slate-400">Top categories</p>
+              <div className="mt-5 space-y-4">
+                {topCategories.length === 0 ? (
+                  <p className="text-slate-400">No expenses to analyze for this range.</p>
+                ) : (
+                  topCategories.map(([category, amount], index) => {
+                    const ratio = totalSpent ? (amount / totalSpent) * 100 : 0;
+                    return (
+                      <div key={category} className="space-y-2 rounded-3xl border border-slate-800 bg-slate-950/70 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="font-medium capitalize text-white">{category}</p>
+                          <p className="text-sm text-slate-400">₹ {amount.toLocaleString()}</p>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-slate-800">
+                          <div className="h-full rounded-full bg-linear-to-r from-sky-500 to-cyan-400" style={{ width: `${Math.min(ratio, 100)}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
 
             <div className="space-y-6">
@@ -354,6 +359,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
           </div>
+
 
           <div className="rounded-[2rem] border border-slate-800 bg-slate-900/80 mt-6 p-6 shadow-2xl shadow-slate-950/20">
             <div className="flex items-center justify-between gap-4">
