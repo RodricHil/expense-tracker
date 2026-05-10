@@ -2,6 +2,7 @@
 
 A modern expense tracker built with Next.js, MongoDB, and NextAuth. This app helps users log spending, visualize trends, and explore category-based insights in a polished analytics dashboard.
 
+
 ## Features
 
 - User authentication with NextAuth
