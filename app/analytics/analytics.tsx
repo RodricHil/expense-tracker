@@ -62,7 +62,7 @@ type DateRange = {
   label: string;
 };
 
-export default function AnalyticsPage() {
+export default function AnalyticsClientPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [dateRange, setDateRange] = useState<DateRange>({
     startDate: new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000),
