@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Expense Tracker",
   description: "Track your expenses with analytics dashboard",
+    alternates: {
+    canonical: "https://expense-tracker-eight-rho-59.vercel.app",
+  },
 };
 
 export default function RootLayout({

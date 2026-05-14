@@ -1,27 +1,27 @@
-"use client";
+import { Metadata } from "next";
+import HomeRedirect from "./HomeRedirect";
 
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+export const metadata: Metadata = {
+  title: "Home | Expense Tracker",
+  description:
+    "Manage and track your daily expenses with detailed analytics and reports",
+  alternates: {
+    canonical: "https://expense-tracker-eight-rho-59.vercel.app",
+  },
+  keywords: [
+    "expense tracker",
+    "budget management",
+    "financial tracking",
+    "expense analytics",
+  ],
+  openGraph: {
+    title: "Expense Tracker - Manage Your Finances",
+    description: "Track your expenses with analytics dashboard",
+    url: "https://expense-tracker-eight-rho-59.vercel.app",
+    type: "website",
+  },
+};
 
-export default function Home() {
-  const { status } = useSession();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (status === "authenticated") {
-      router.push("/dashboard");
-    } else if (status === "unauthenticated") {
-      router.push("/login");
-    }
-  }, [status, router]);
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <div className="text-center">
-        <div className="w-16 h-16 rounded-full border-4 border-purple-400 border-t-purple-600 animate-spin mx-auto mb-4"></div>
-        <p className="text-gray-300">Redirecting...</p>
-      </div>
-    </div>
-  );
+export default function Page() {
+  return <HomeRedirect />;
 }
