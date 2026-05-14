@@ -21,6 +21,7 @@ import {
 } from "recharts";
 import Navbar from "@/app/components/Navbar";
 import DateRangeFilter from "@/app/components/DateRangeFilter";
+import { useCurrency } from "@/app/components/CurrencyProvider";
 
 const timeframeOptions = ["Daily", "Weekly", "Monthly", "Yearly"] as const;
 const palette = ["#2563EB", "#7C3AED", "#0EA5E9", "#F97316", "#14B8A6", "#F43F5E"];
@@ -52,6 +53,7 @@ export default function AnalyticsPage() {
   });
   const [timeframe, setTimeframe] = useState<Timeframe>("Monthly");
   const [isMounted, setIsMounted] = useState(false);
+  const { currency } = useCurrency();
 
   useEffect(() => {
     async function loadExpenses() {
@@ -190,7 +192,7 @@ export default function AnalyticsPage() {
                     Total spent
                   </p>
                   <p className="text-xl font-semibold text-white whitespace-nowrap">
-                    ₹ {totalSpent.toLocaleString()}
+                    {currency} {totalSpent.toLocaleString()}
                   </p>
                 </div>
 
@@ -200,7 +202,7 @@ export default function AnalyticsPage() {
                     Average / day
                   </p>
                   <p className="text-xl font-semibold text-white whitespace-nowrap">
-                    ₹ {averageDaily.toLocaleString()}
+                    {currency} {averageDaily.toLocaleString()}
                   </p>
                 </div>
 
@@ -302,7 +304,7 @@ export default function AnalyticsPage() {
                       <div key={category} className="space-y-2 rounded-3xl border border-slate-800 bg-slate-950/70 p-4">
                         <div className="flex items-center justify-between gap-3">
                           <p className="font-medium capitalize text-white">{category}</p>
-                          <p className="text-sm text-slate-400">₹ {amount.toLocaleString()}</p>
+                          <p className="text-sm text-slate-400">{currency} {amount.toLocaleString()}</p>
                         </div>
                         <div className="h-2 overflow-hidden rounded-full bg-slate-800">
                           <div className="h-full rounded-full bg-linear-to-r from-sky-500 to-cyan-400" style={{ width: `${Math.min(ratio, 100)}%` }} />
@@ -325,7 +327,7 @@ export default function AnalyticsPage() {
                       {categoryTotals.slice(0, 5).map(([category, amount], index) => (
                         <div key={category} className="flex items-center justify-between gap-4 rounded-3xl border border-slate-800 bg-slate-950/70 px-4 py-3">
                           <span className="text-sm text-slate-200 capitalize">{category}</span>
-                          <span className="text-sm font-semibold text-white">₹ {amount.toLocaleString()}</span>
+                          <span className="text-sm font-semibold text-white">{currency} {amount.toLocaleString()}</span>
                         </div>
                       ))}
                     </div>

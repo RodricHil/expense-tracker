@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useCurrency } from "@/app/components/CurrencyProvider";
 import { useNotification } from "@/app/components/elements/NotificationProvider";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -59,6 +60,7 @@ export default function EditExpenseModal({
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const { currency } = useCurrency();
   const { showNotification } = useNotification();
 
   const handleChange = (
@@ -138,7 +140,7 @@ export default function EditExpenseModal({
 
           {/* Amount */}
           <InputField
-            label="Amount (₹)"
+            label={`Amount (${currency})`}
             type="number"
             name="amount"
             value={form.amount}

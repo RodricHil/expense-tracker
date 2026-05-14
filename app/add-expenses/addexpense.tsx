@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 import Navbar from "@/app/components/Navbar";
 import { useNotification } from "@/app/components/elements/NotificationProvider";
+import { useCurrency } from "@/app/components/CurrencyProvider";
 
 const categories = [
   "food",
@@ -42,6 +43,7 @@ export default function AddExpense() {
   const [isLoading, setIsLoading] = useState(false);
   const [amountError, setAmountError] = useState("");
   const { showNotification } = useNotification();
+  const { currency } = useCurrency();
 
   const [form, setForm] = useState({
     date: new Date().toISOString().split("T")[0],
@@ -160,7 +162,7 @@ export default function AddExpense() {
               {/* Amount */}
               <div>
                 <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-                  Amount (₹)
+                  Amount ({currency})
                 </label>
                 <input
                   type="text"

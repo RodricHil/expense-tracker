@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useCurrency } from "@/app/components/CurrencyProvider";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash, faPen, faChartPie, faEye, faWallet, faCalendarDays } from "@fortawesome/free-solid-svg-icons";
 import EditExpenseModal from "@/app/components/EditExpenseModal";
@@ -44,6 +45,7 @@ export default function ExpensesPage() {
     endDate: new Date(),
     label: "Last 30 Days",
   });
+  const { currency } = useCurrency();
 
   const fetchExpenses = async () => {
     const res = await fetch("/api/expenses");
@@ -183,7 +185,7 @@ export default function ExpensesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-white text-sm font-medium mb-1">Total Spent (All Time)</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">₹ {totalSpent.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">{currency} {totalSpent.toLocaleString()}</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-green-500 flex items-center justify-center">
                 <FontAwesomeIcon icon={faWallet} className="text-white w-6 h-6" />
@@ -195,7 +197,7 @@ export default function ExpensesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-white text-sm font-medium mb-1">{dateRange.label}</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">₹ {filteredSpent.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">{currency} {filteredSpent.toLocaleString()}</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-cyan-500 flex items-center justify-center">
                 <FontAwesomeIcon icon={faCalendarDays} className="text-white w-6 h-6" />
@@ -238,7 +240,7 @@ export default function ExpensesPage() {
                   <div key={category} className="space-y-2">
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-sm font-medium text-slate-200 capitalize">{category}</p>
-                      <p className="text-sm font-semibold text-white">₹ {amount.toLocaleString()}</p>
+                      <p className="text-sm font-semibold text-white">{currency} {amount.toLocaleString()}</p>
                     </div>
                     <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
                       <div
@@ -257,7 +259,7 @@ export default function ExpensesPage() {
             <div className="space-y-4 text-slate-200">
               <div className="rounded-3xl border border-slate-700/70 bg-slate-950/40 p-4">
                 <p className="text-sm text-slate-400">Average spend per day</p>
-                <p className="mt-2 text-2xl font-semibold">₹ {filteredExpenses.length ? Math.round(filteredSpent / Math.max((dateRange.endDate.getTime() - dateRange.startDate.getTime()) / (1000 * 60 * 60 * 24) + 1, 1)).toLocaleString() : 0}</p>
+                <p className="mt-2 text-2xl font-semibold">{currency} {filteredExpenses.length ? Math.round(filteredSpent / Math.max((dateRange.endDate.getTime() - dateRange.startDate.getTime()) / (1000 * 60 * 60 * 24) + 1, 1)).toLocaleString() : 0}</p>
               </div>
               <div className="rounded-3xl border border-slate-700/70 bg-slate-950/40 p-4">
                 <p className="text-sm text-slate-400">Selected range</p>
@@ -352,7 +354,7 @@ export default function ExpensesPage() {
                           </td>
                           <td className="py-4 px-4 text-right">
                             <span className="font-bold text-gray-900 dark:text-white text-lg">
-                              ₹ {exp.amount.toLocaleString()}
+                              {currency} {exp.amount.toLocaleString()}
                             </span>
                           </td>
                           <td className="py-4 px-4">
@@ -428,12 +430,16 @@ export default function ExpensesPage() {
                             </td>
 
                             <td className="py-4 px-4 text-right text-white font-bold">
-                              ₹ {exp.amount.toLocaleString()}
+                              {currency} {exp.amount.toLocaleString()}
                             </td>
-
                             <td className="py-4 px-4 text-center">
                               {/* Actions */}
-                              <button onClick={() => setEditingExpense(exp)} className="p-2 rounded-lg text-blue-600 cursor-pointer dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors" title="Edit" > <FontAwesomeIcon icon={faPen} className="w-4 h-4" /> </button> <button onClick={() => handleDelete(exp._id)} className="p-2 rounded-lg text-red-600 cursor-pointer dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors" title="Delete" > <FontAwesomeIcon icon={faTrash} className="w-4 h-4" /> </button>
+                              <button onClick={() => setEditingExpense(exp)} className="p-2 rounded-lg text-blue-600 cursor-pointer dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors" title="Edit">
+                                <FontAwesomeIcon icon={faPen} className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => handleDelete(exp._id)} className="p-2 rounded-lg text-red-600 cursor-pointer dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors" title="Delete">
+                                <FontAwesomeIcon icon={faTrash} className="w-4 h-4" />
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -455,7 +461,7 @@ export default function ExpensesPage() {
                             </span>
 
                             <span className="font-bold text-lg text-white">
-                              ₹ {exp.amount.toLocaleString()}
+                              {currency} {exp.amount.toLocaleString()}
                             </span>
                           </div>
 

@@ -49,6 +49,7 @@ export const authOptions: NextAuthOptions = {
                 name: profile.name,
                 email: profile.email,
                 image: profile.picture,
+                preferredCurrency: "₹",
                 emailVerified: new Date(),
               });
               await newUser.save();

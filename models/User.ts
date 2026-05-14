@@ -17,6 +17,10 @@ const UserSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    preferredCurrency: {
+      type: String,
+      default: "₹",
+    },
     emailVerified: {
       type: Date,
       default: null,

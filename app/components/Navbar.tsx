@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import { useCurrency } from "@/app/components/CurrencyProvider";
 import { useNotification } from "@/app/components/elements/NotificationProvider";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -30,8 +31,13 @@ export default function Navbar() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { data: session } = useSession();
+  const { currency, options: currencyOptions, setCurrency, loading: currencyLoading } = useCurrency();
   const { showNotification } = useNotification();
   const pathname = usePathname() || "/";
+
+  const handleCurrencyChange = async (nextCurrency: string) => {
+    await setCurrency(nextCurrency);
+  };
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -60,7 +66,7 @@ export default function Navbar() {
             </Link>
           </div>
 
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-3">
             {navLinks.map((item) => (
               <Link
                 key={item.href}
@@ -76,6 +82,24 @@ export default function Navbar() {
                 {item.label}
               </Link>
             ))}
+            <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm transition dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
+              <label htmlFor="currency-select" className="sr-only">
+                Currency
+              </label>
+              <select
+                id="currency-select"
+                value={currency}
+                onChange={(e) => handleCurrencyChange(e.target.value)}
+                disabled={!session || currencyLoading}
+                className="bg-transparent text-sm outline-none"
+              >
+                {currencyOptions.map((option) => (
+                  <option key={option.symbol} value={option.symbol}>
+                    {option.symbol} {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -181,6 +205,29 @@ export default function Navbar() {
                   {item.label}
                 </Link>
               ))}
+              <div className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
+                <label htmlFor="mobile-currency-select" className="block text-xs font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400 mb-3">
+                  Currency
+                </label>
+                <div className="relative">
+                  <select
+                    id="mobile-currency-select"
+                    value={currency}
+                    onChange={(e) => handleCurrencyChange(e.target.value)}
+                    disabled={!session || currencyLoading}
+                    className="w-full appearance-none rounded-2xl border border-slate-300 bg-white px-4 py-3 pr-10 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                  >
+                    {currencyOptions.map((option) => (
+                      <option key={option.symbol} value={option.symbol}>
+                        {option.symbol} {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-3 top-1/2 flex -translate-y-1/2 items-center text-slate-500 dark:text-slate-400">
+                    <FontAwesomeIcon icon={faChevronDown} className="w-4 h-4" />
+                  </div>
+                </div>
+              </div>
               {!session && (
                 <Link
                   href="/login"

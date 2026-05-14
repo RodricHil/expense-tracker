@@ -2,6 +2,7 @@
 
 import { SessionProvider } from "next-auth/react";
 import NotificationProvider from "./NotificationProvider";
+import CurrencyProvider from "../CurrencyProvider";
 
 export default function Providers({
   children,
@@ -10,7 +11,9 @@ export default function Providers({
 }) {
   return (
     <SessionProvider>
-      <NotificationProvider>{children}</NotificationProvider>
+      <NotificationProvider>
+        <CurrencyProvider>{children}</CurrencyProvider>
+      </NotificationProvider>
     </SessionProvider>
   );
 }
