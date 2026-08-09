@@ -240,8 +240,6 @@ export default function Navbar() {
           </div>
         )}
       </nav>
-      <div className="h-16" />
-
       {showLogoutConfirm && (
         <ConfirmationModal
           title="Logout?"
