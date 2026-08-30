@@ -3,112 +3,146 @@ import Expense from "@/models/Expense";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 import mongoose from "mongoose";
+import {
+  expenseCreateSchema,
+  expenseDeleteSchema,
+  expenseUpdateSchema,
+  handleRouteError,
+  notFound,
+  parseJsonBody,
+  unauthorized,
+} from "@/lib/validation";
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
+  try {
+    const session = await getServerSession(authOptions);
 
-  if (!session) {
-    return new Response("Unauthorized", { status: 401 });
+    if (!session?.user?.email) {
+      return unauthorized();
+    }
+
+    // Validate before touching the database. Unknown keys (_id, createdAt,
+    // updatedAt, userId, ...) are dropped by the schema, and the fields below
+    // are destructured explicitly — the request body is never spread.
+    const { date, description, quantity, mode, type, amount } =
+      expenseCreateSchema.parse(await parseJsonBody(req));
+
+    await connectDB();
+
+    const expense = await Expense.create({
+      userId: session.user.email,
+      date,
+      description,
+      quantity: quantity ?? null,
+      mode,
+      type,
+      amount: mongoose.Types.Decimal128.fromString(amount),
+    });
+
+    return Response.json({
+      ...expense.toObject(),
+      amount: parseFloat(expense.amount.toString()),
+    });
+  } catch (error) {
+    return handleRouteError(error);
   }
-
-  await connectDB();
-  const body = await req.json();
-
-  const expense = await Expense.create({
-    ...body,
-    userId: session.user?.email,
-    amount: mongoose.Types.Decimal128.fromString(
-      body.amount.toString()
-    ),
-  });
-
-  return Response.json({
-    ...expense.toObject(),
-    amount: parseFloat(expense.amount.toString()),
-  });
 }
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
+  try {
+    const session = await getServerSession(authOptions);
 
-  if (!session) {
-    return new Response("Unauthorized", { status: 401 });
+    if (!session?.user?.email) {
+      return unauthorized();
+    }
+
+    await connectDB();
+
+    const expenses = await Expense.find({
+      userId: session.user.email,
+    })
+      .sort({ date: -1 })
+      .lean();
+
+    const formatted = expenses.map((exp: any) => ({
+      ...exp,
+      amount: parseFloat(exp.amount.toString()),
+    }));
+
+    return Response.json(formatted);
+  } catch (error) {
+    return handleRouteError(error);
   }
-
-  await connectDB();
-
-  const expenses = await Expense.find({
-    userId: session.user?.email,
-  })
-    .sort({ date: -1 })
-    .lean();
-
-  const formatted = expenses.map((exp: any) => ({
-    ...exp,
-    amount: parseFloat(exp.amount.toString()),
-  }));
-
-  return Response.json(formatted);
 }
 
 
 export async function DELETE(req: Request) {
-  const session = await getServerSession(authOptions);
+  try {
+    const session = await getServerSession(authOptions);
 
-  if (!session) {
-    return new Response("Unauthorized", { status: 401 });
+    if (!session?.user?.email) {
+      return unauthorized();
+    }
+
+    // `id` is validated as a real ObjectId string, so a query operator such as
+    // {"$ne": null} is rejected with a 400 before it reaches the filter.
+    const { id } = expenseDeleteSchema.parse(await parseJsonBody(req));
+
+    await connectDB();
+
+    const expense = await Expense.findOneAndDelete({
+      _id: id,
+      userId: session.user.email, // extra security
+    });
+
+    if (!expense) {
+      return notFound();
+    }
+
+    return Response.json({ message: "Deleted successfully" });
+  } catch (error) {
+    return handleRouteError(error);
   }
-
-  await connectDB();
-
-  const { id } = await req.json();
-
-  const expense = await Expense.findOneAndDelete({
-    _id: id,
-    userId: session.user?.email, // extra security
-  });
-
-  if (!expense) {
-    return new Response("Not Found", { status: 404 });
-  }
-
-  return Response.json({ message: "Deleted successfully" });
 }
 
 export async function PUT(req: Request) {
-  const session = await getServerSession(authOptions);
+  try {
+    const session = await getServerSession(authOptions);
 
-  if (!session) {
-    return new Response("Unauthorized", { status: 401 });
+    if (!session?.user?.email) {
+      return unauthorized();
+    }
+
+    const { id, date, description, quantity, mode, type, amount } =
+      expenseUpdateSchema.parse(await parseJsonBody(req));
+
+    await connectDB();
+
+    const updatedExpense = await Expense.findOneAndUpdate(
+      {
+        _id: id,
+        userId: session.user.email, // secure
+      },
+      {
+        date,
+        description,
+        quantity: quantity ?? null,
+        mode,
+        type,
+        amount: mongoose.Types.Decimal128.fromString(amount),
+      },
+      { new: true }
+    );
+
+    if (!updatedExpense) {
+      return notFound();
+    }
+
+    return Response.json({
+      ...updatedExpense.toObject(),
+      amount: parseFloat(updatedExpense.amount.toString()),
+    });
+  } catch (error) {
+    return handleRouteError(error);
   }
-
-  await connectDB();
-  const body = await req.json();
-
-  const updatedExpense = await Expense.findOneAndUpdate(
-    {
-      _id: body.id,
-      userId: session.user?.email, // secure
-    },
-    {
-      date: body.date,
-      description: body.description,
-      quantity: body.quantity,
-      mode: body.mode,
-      type: body.type,
-      amount: mongoose.Types.Decimal128.fromString(
-        body.amount.toString()
-      ),
-    },
-    { new: true }
-  );
-
-  if (!updatedExpense) {
-    return new Response("Not Found", { status: 404 });
-  }
-
-  return Response.json({
-    ...updatedExpense.toObject(),
-    amount: parseFloat(updatedExpense.amount.toString()),
-  });
 }
