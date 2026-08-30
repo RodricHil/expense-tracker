@@ -1,3 +1,6 @@
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import AddExpense from "./addexpense";
 
 export const metadata = {
@@ -15,7 +18,13 @@ export const metadata = {
   },
 };
 
-export default function AddExpensePage() {
+export default async function AddExpensePage() {
+    // Defence in depth (ET-H2): authorization must not depend on middleware alone.
+    const session = await getServerSession(authOptions);
+    if (!session) {
+        redirect("/login");
+    }
+
     return (
         <AddExpense />
     );
