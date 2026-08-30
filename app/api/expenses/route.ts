@@ -1,6 +1,7 @@
 import { connectDB } from "@/lib/mongodb";
 import Expense from "@/models/Expense";
 import { getServerSession } from "next-auth";
+import type { Session } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 import mongoose from "mongoose";
 import {
@@ -12,6 +13,47 @@ import {
   parseJsonBody,
   unauthorized,
 } from "@/lib/validation";
+
+/**
+ * ET-M1 — expense ownership.
+ *
+ * `session.user.id` is the immutable Google `sub`. `session.user.email` is
+ * mutable: Google lets a user change their address, and a freed address can be
+ * reassigned to somebody else. Ownership must not hang off the mutable one, so
+ * every NEW expense is written with the stable id.
+ */
+function ownerId(session: Session): string {
+  // The email fallback only fires for a session minted before `token.id`
+  // existed. It keeps such a session writing under the same key it can already
+  // read, rather than orphaning the row under `undefined`.
+  return session.user?.id ?? (session.user?.email as string);
+}
+
+/**
+ * TRANSITIONAL — remove only after the migration has been applied AND verified.
+ *
+ * Every expense written before this change stores the owner's EMAIL in
+ * `userId`. Switching reads to the stable id alone would make all of that data
+ * invisible to its owner, so reads, updates and deletes match either key.
+ *
+ * The removal procedure, in order:
+ *   1. `node --env-file=.env.local scripts/migrate-userid.mjs`          (dry run)
+ *   2. `node --env-file=.env.local scripts/migrate-userid.mjs --apply`  (writes)
+ *   3. Verify `db.expenses.countDocuments({ userId: { $regex: "@" } })` is 0
+ *      and that the "unmapped" count printed by the script is 0.
+ *   4. Then, and only then, replace every `ownerFilter(session)` below with
+ *      `{ userId: ownerId(session) }` and delete this function.
+ *
+ * Matching on a two-element `$in` still uses the `userId` index, so this costs
+ * nothing measurable in the meantime.
+ */
+function ownerFilter(session: Session): { userId: { $in: string[] } } {
+  const ids = [session.user?.id, session.user?.email].filter(
+    (value): value is string => typeof value === "string" && value.length > 0
+  );
+
+  return { userId: { $in: Array.from(new Set(ids)) } };
+}
 
 export async function POST(req: Request) {
   try {
@@ -30,7 +72,8 @@ export async function POST(req: Request) {
     await connectDB();
 
     const expense = await Expense.create({
-      userId: session.user.email,
+      // Stable id: new rows never carry an email as their owner key.
+      userId: ownerId(session),
       date,
       description,
       quantity: quantity ?? null,
@@ -58,9 +101,7 @@ export async function GET() {
 
     await connectDB();
 
-    const expenses = await Expense.find({
-      userId: session.user.email,
-    })
+    const expenses = await Expense.find(ownerFilter(session))
       .sort({ date: -1 })
       .lean();
 
@@ -92,7 +133,7 @@ export async function DELETE(req: Request) {
 
     const expense = await Expense.findOneAndDelete({
       _id: id,
-      userId: session.user.email, // extra security
+      ...ownerFilter(session), // ownership check, still enforced in the query
     });
 
     if (!expense) {
@@ -121,7 +162,7 @@ export async function PUT(req: Request) {
     const updatedExpense = await Expense.findOneAndUpdate(
       {
         _id: id,
-        userId: session.user.email, // secure
+        ...ownerFilter(session), // ownership check, still enforced in the query
       },
       {
         date,
