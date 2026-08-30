@@ -12,7 +12,13 @@ const PUBLIC_PREFIXES = ["/api/auth"];
 function isPublicPath(pathname: string): boolean {
   return (
     PUBLIC_PATHS.includes(pathname) ||
-    PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+    // Match on a SEGMENT boundary, not a raw prefix. A bare `startsWith`
+    // would make "/api/authx" and "/api/auth-admin" public too — harmless
+    // while no /api pattern is in the matcher below, but a real hole the
+    // moment one is added. Cheaper to be correct now than to remember later.
+    PUBLIC_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+    )
   );
 }
 

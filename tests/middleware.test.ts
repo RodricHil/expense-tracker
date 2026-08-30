@@ -96,6 +96,13 @@ describe("protected paths — default deny", () => {
     "/dashboard/settings",
     "/add-expenses",
     "/analytics",
+    // NOTE: these two /api paths exercise the POLICY FUNCTION only. Next.js
+    // never runs the middleware for them, because `config.matcher` below does
+    // not include an /api pattern — see the "matcher coverage" block, which
+    // asserts that gap explicitly. The API routes are protected by their own
+    // in-handler getServerSession checks, not by this callback. Listing them
+    // here proves the policy would deny them IF the matcher were widened; it
+    // is not evidence that middleware guards the API today.
     "/api/expenses",
     "/api/user/currency",
     // Anything not on the allow-list, including a route that does not exist
@@ -118,6 +125,22 @@ describe("protected paths — default deny", () => {
     expect(authorize("/evil/api/auth/callback", null)).toBe(false);
   });
 
+  // The public prefix must match on a segment boundary. A bare startsWith
+  // would let an attacker-registered "/api/authx" inherit /api/auth's public
+  // status. Latent today (no /api pattern in the matcher) but load-bearing the
+  // moment one is added, so it is pinned by a test rather than by memory.
+  it.each(["/api/authx", "/api/auth-admin", "/api/authentication"])(
+    "does not treat %s as public just because it starts with /api/auth",
+    (pathname) => {
+      expect(authorize(pathname, null)).toBe(false);
+    }
+  );
+
+  it("still allows the real /api/auth root and its children", () => {
+    expect(authorize("/api/auth", null)).toBe(true);
+    expect(authorize("/api/auth/callback/google", null)).toBe(true);
+  });
+
   it("denies an undefined token, not just a null one", () => {
     expect(authorize("/dashboard", undefined as unknown as TokenLike)).toBe(false);
   });
@@ -133,6 +156,17 @@ describe("matcher coverage", () => {
         "/login",
       ])
     );
+  });
+
+  // Documents a REAL boundary rather than asserting a protection that does not
+  // exist. Middleware is a page-level guard here; /api/* is guarded by each
+  // handler's own getServerSession + userId-scoped query (the review's verified
+  // "no IDOR" positive control). If someone later adds an /api pattern to the
+  // matcher, this test fails and forces a deliberate re-think — withAuth would
+  // then answer unauthenticated API calls with an HTML redirect to the sign-in
+  // page instead of the clean 401 JSON the handlers return today.
+  it("does NOT match /api — API auth lives in the handlers, by design", () => {
+    expect(config.matcher.some((pattern) => pattern.startsWith("/api"))).toBe(false);
   });
 });
 

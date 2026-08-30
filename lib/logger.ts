@@ -78,16 +78,41 @@ export function newErrorId(): string {
  * Reduce an unknown thrown value to safe, structured fields.
  * `stack` is included because these records never leave the server.
  */
+/**
+ * Strip credentials and personal data out of free-form error text.
+ *
+ * WHY: driver errors quote the thing they failed on. A MongoDB connection
+ * failure surfaces as `MongoServerError: ... mongodb+srv://user:PASSWORD@cluster...`,
+ * which would write MONGODB_URI's credentials straight into the log stream —
+ * exactly what the PII RULES above forbid, and a worse leak than the ET-M2
+ * console.logs this module replaced. Message and stack are attacker-influenced
+ * and provider-defined, so they are scrubbed rather than trusted.
+ */
+const REDACTIONS: Array<[RegExp, string]> = [
+  // scheme://user:password@host  ->  keep the shape, drop the credentials
+  [/\b([a-z][a-z0-9+.-]*:\/\/)[^\s/@:]+:[^\s/@]*@/gi, "$1[redacted]@"],
+  // Bare email addresses. The lookbehind matters: this rule runs AFTER the URL
+  // rule above, so it must not re-match the "[redacted]@host" that rule just
+  // produced (nor a userinfo segment of any surviving URL). Excluding "[", "/"
+  // and the local-part characters from the preceding position keeps it to
+  // genuinely standalone addresses.
+  [/(?<![A-Za-z0-9._%+\-/@[])[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, "[redacted-email]"],
+];
+
+export function redact(text: string): string {
+  return REDACTIONS.reduce((acc, [pattern, replacement]) => acc.replace(pattern, replacement), text);
+}
+
 export function serializeError(error: unknown): LogContext {
   if (error instanceof Error) {
     return {
       errorName: error.name,
-      errorMessage: error.message,
-      stack: error.stack,
+      errorMessage: redact(error.message),
+      stack: error.stack ? redact(error.stack) : undefined,
     };
   }
 
-  return { errorName: typeof error, errorMessage: String(error) };
+  return { errorName: typeof error, errorMessage: redact(String(error)) };
 }
 
 export function logInfo(event: string, context: LogContext = {}): void {
