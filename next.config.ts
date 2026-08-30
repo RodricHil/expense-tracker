@@ -59,8 +59,10 @@ const APP_ORIGIN = resolveAppOrigin();
  *   build time, but these stay allow-listed so a fallback/dev fetch does not
  *   trip the report.
  * - img-src mirrors `images.remotePatterns` below: lh3.googleusercontent.com
- *   (Google account avatars), developers.google.com (the "G" sign-in logo) and
- *   storage.googleapis.com.
+ *   (Google account avatars) and developers.google.com (the "G" sign-in logo).
+ *   ET-L4 (Round 6) removed the storage.googleapis.com/byteeit-bucket pattern
+ *   along with the stray marketing template that was its only consumer, so the
+ *   matching img-src allowance went with it.
  */
 const cspDirectives = [
   "default-src 'self'",
@@ -81,7 +83,6 @@ const cspDirectives = [
     "img-src 'self' data: blob:",
     "https://lh3.googleusercontent.com",
     "https://developers.google.com",
-    "https://storage.googleapis.com",
   ].join(" "),
   isDev
     ? "connect-src 'self' ws: wss: https://fonts.googleapis.com https://fonts.gstatic.com"
@@ -140,11 +141,6 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "storage.googleapis.com",
-        pathname: "/byteeit-bucket/**",
-      },
       {
         protocol: "https",
         hostname: "lh3.googleusercontent.com",
