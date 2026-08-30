@@ -81,6 +81,17 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      # Round 8 — the security regression gate.
+      #
+      # These are not coverage theatre: they assert ownership scoping on all
+      # four expense verbs (the no-IDOR positive control, §E), the Round 3
+      # validation trust boundary (ET-H4/ET-H5/ET-M5) and the Round 2
+      # default-deny middleware matrix (ET-H2). Mongoose, NextAuth and
+      # next/server are mocked, so this step needs no database, no secret and
+      # no network — it runs on the same secret-free checkout as the build.
+      - name: Test
+        run: npm test
+
       - name: Build
         run: npm run build
 

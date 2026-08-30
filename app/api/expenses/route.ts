@@ -1,69 +1,31 @@
-import { connectDB } from "@/lib/mongodb";
-import Expense from "@/models/Expense";
 import { getServerSession } from "next-auth";
-import type { Session } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 import mongoose from "mongoose";
+import { connectDB } from "@/lib/mongodb";
+import Expense from "@/models/Expense";
+import { loadExpensePage, ownerFilter, ownerId } from "@/lib/expenses";
 import {
   expenseCreateSchema,
   expenseDeleteSchema,
   expenseUpdateSchema,
   handleRouteError,
   notFound,
+  parseExpenseQuery,
   parseJsonBody,
   unauthorized,
 } from "@/lib/validation";
 
 /**
- * Shape of an expense document as returned by `.lean()`.
+ * The four expense verbs.
  *
- * `models/Expense.ts` is an untyped Mongoose model, so queries resolve to `any`.
- * This is the minimum contract the GET handler relies on: an `amount` that can be
- * stringified (it is a `Decimal128`), plus whatever else the document carries and
- * is spread through untouched.
+ * Every one of them authenticates first and then scopes the database operation
+ * by `ownerFilter(session)` INSIDE the query filter — never by checking
+ * ownership after a fetch. That is the §E "no IDOR" positive control, and
+ * tests/expenses-route.test.ts is its regression gate.
+ *
+ * The read query itself lives in `lib/expenses.ts` because the dashboard and
+ * analytics server components run the same one directly (§G.3).
  */
-type LeanExpense = Record<string, unknown> & { amount: { toString(): string } };
-
-/**
- * ET-M1 — expense ownership.
- *
- * `session.user.id` is the immutable Google `sub`. `session.user.email` is
- * mutable: Google lets a user change their address, and a freed address can be
- * reassigned to somebody else. Ownership must not hang off the mutable one, so
- * every NEW expense is written with the stable id.
- */
-function ownerId(session: Session): string {
-  // The email fallback only fires for a session minted before `token.id`
-  // existed. It keeps such a session writing under the same key it can already
-  // read, rather than orphaning the row under `undefined`.
-  return session.user?.id ?? (session.user?.email as string);
-}
-
-/**
- * TRANSITIONAL — remove only after the migration has been applied AND verified.
- *
- * Every expense written before this change stores the owner's EMAIL in
- * `userId`. Switching reads to the stable id alone would make all of that data
- * invisible to its owner, so reads, updates and deletes match either key.
- *
- * The removal procedure, in order:
- *   1. `node --env-file=.env.local scripts/migrate-userid.mjs`          (dry run)
- *   2. `node --env-file=.env.local scripts/migrate-userid.mjs --apply`  (writes)
- *   3. Verify `db.expenses.countDocuments({ userId: { $regex: "@" } })` is 0
- *      and that the "unmapped" count printed by the script is 0.
- *   4. Then, and only then, replace every `ownerFilter(session)` below with
- *      `{ userId: ownerId(session) }` and delete this function.
- *
- * Matching on a two-element `$in` still uses the `userId` index, so this costs
- * nothing measurable in the meantime.
- */
-function ownerFilter(session: Session): { userId: { $in: string[] } } {
-  const ids = [session.user?.id, session.user?.email].filter(
-    (value): value is string => typeof value === "string" && value.length > 0
-  );
-
-  return { userId: { $in: Array.from(new Set(ids)) } };
-}
 
 export async function POST(req: Request) {
   try {
@@ -101,7 +63,23 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET() {
+/**
+ * §G.4 — GET /api/expenses
+ *
+ * This handler used to take no input and return `Expense.find(owner)` in full:
+ * every row a user had ever created, on every dashboard and analytics page
+ * load. The browser then did the filtering and the aggregation, so the response
+ * grew linearly with account age — a multi-year account downloaded thousands of
+ * documents to draw one chart.
+ *
+ * It now returns AT MOST `limit` rows (hard cap: MAX_PAGE_SIZE) plus a
+ * MongoDB-computed summary. `expenses[]` items are byte-for-byte what this
+ * route always returned (all document fields, `amount` as a JSON number); they
+ * now sit in an envelope alongside `pagination` and `summary`, because a single
+ * page can no longer answer "total spent". Both callers
+ * (app/dashboard/dashboardclient.tsx, app/analytics/analytics.tsx) read it.
+ */
+export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
 
@@ -109,23 +87,10 @@ export async function GET() {
       return unauthorized();
     }
 
-    await connectDB();
+    // Validated before it can reach `skip`, `limit` or a date filter.
+    const query = parseExpenseQuery(req.url);
 
-    // ET-L5: `models/Expense.ts` exports an untyped Mongoose model, so `.lean()`
-    // resolves to `any`. Narrowing it here — at the single point of use — keeps
-    // the `no-explicit-any` escape hatch out of the code and documents the one
-    // field this handler actually reshapes (Decimal128 is not JSON-serialisable
-    // as a number, so it is stringified by the driver and parsed back here).
-    const expenses: LeanExpense[] = await Expense.find(ownerFilter(session))
-      .sort({ date: -1 })
-      .lean();
-
-    const formatted = expenses.map((exp) => ({
-      ...exp,
-      amount: parseFloat(exp.amount.toString()),
-    }));
-
-    return Response.json(formatted);
+    return Response.json(await loadExpensePage(session, query));
   } catch (error) {
     return handleRouteError(error);
   }

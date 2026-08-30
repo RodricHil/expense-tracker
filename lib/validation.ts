@@ -121,6 +121,82 @@ export const expenseDeleteSchema = z.object({
   id: objectIdSchema,
 });
 
+/**
+ * §G.4 — GET /api/expenses query parameters.
+ *
+ * Before this existed the handler took no input at all and returned a user's
+ * ENTIRE expense history, which the browser then filtered and aggregated. The
+ * response therefore grew linearly with account age. These parameters are the
+ * trust boundary for the read path: everything that reaches `skip`, `limit` and
+ * the `date` range filter is parsed here first.
+ *
+ * Deliberate choices:
+ *  - `limit` is CAPPED at MAX_PAGE_SIZE. A caller cannot ask for 10 million
+ *    rows, so the response size is bounded no matter what is sent.
+ *  - `page` is bounded too: `skip` grows with it and an unbounded skip is a
+ *    trivial way to make the database do unbounded work.
+ *  - Both are matched against a digits-only pattern rather than coerced, so
+ *    "1e9", "-1", "0x20" and `{"$gt":0}` are 400s, not surprising numbers.
+ *  - `from`/`to` reuse the same date parser the write path uses.
+ */
+export const DEFAULT_PAGE_SIZE = 20;
+export const MAX_PAGE_SIZE = 100;
+export const MAX_PAGE = 100_000;
+
+/** Digits only, bounded length. Linear — safe under `detect-unsafe-regex`. */
+const DIGITS_PATTERN = /^[0-9]{1,7}$/;
+
+const boundedIntSchema = (min: number, max: number) =>
+  z
+    .string()
+    .trim()
+    .regex(DIGITS_PATTERN, { message: "must be a whole number" })
+    .transform(Number)
+    .refine((value) => value >= min && value <= max, {
+      message: `must be between ${min} and ${max}`,
+    });
+
+export const expenseQuerySchema = z
+  .object({
+    page: boundedIntSchema(1, MAX_PAGE).optional(),
+    limit: boundedIntSchema(1, MAX_PAGE_SIZE).optional(),
+    from: dateSchema.optional(),
+    to: dateSchema.optional(),
+  })
+  .transform((query) => ({
+    page: query.page ?? 1,
+    limit: query.limit ?? DEFAULT_PAGE_SIZE,
+    from: query.from ?? null,
+    to: query.to ?? null,
+  }))
+  .refine((query) => !query.from || !query.to || query.from <= query.to, {
+    message: "`from` must not be after `to`",
+  });
+
+export type ExpenseQuery = z.infer<typeof expenseQuerySchema>;
+
+/** The only query keys the read path understands; anything else is ignored. */
+const EXPENSE_QUERY_KEYS = ["page", "limit", "from", "to"] as const;
+
+/**
+ * Pull the recognised query parameters off a request URL and validate them.
+ * Absent or empty values are omitted so the schema applies its defaults rather
+ * than failing on an empty string.
+ */
+export function parseExpenseQuery(url: string): ExpenseQuery {
+  const { searchParams } = new URL(url);
+  const raw: Record<string, string> = {};
+
+  for (const key of EXPENSE_QUERY_KEYS) {
+    const value = searchParams.get(key);
+    if (value !== null && value.trim() !== "") {
+      raw[key] = value;
+    }
+  }
+
+  return expenseQuerySchema.parse(raw);
+}
+
 export const currencyUpdateSchema = z.object({
   currency: z.enum(SUPPORTED_CURRENCIES),
 });

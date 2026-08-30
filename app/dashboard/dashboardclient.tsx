@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCurrency } from "@/app/components/CurrencyProvider";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash, faPen, faChartPie, faEye, faWallet, faCalendarDays } from "@fortawesome/free-solid-svg-icons";
@@ -28,72 +28,149 @@ type DateRange = {
   label: string;
 };
 
+/**
+ * §G.4 — the envelope `GET /api/expenses` now returns.
+ *
+ * `expenses` is one PAGE of rows, not the account's history, and the totals are
+ * computed by MongoDB over the whole selected range. That is the point of the
+ * change: this page no longer downloads every row a user has ever created just
+ * to add up three numbers.
+ */
+type PageMeta = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
+};
+
+type Summary = {
+  allTimeTotal: number;
+  rangeTotal: number;
+  byType: { type: string; amount: number }[];
+  byMode: { mode: string; amount: number }[];
+  byDay: { date: string; amount: number }[];
+};
+
+type ExpensesResponse = {
+  expenses: Expense[];
+  pagination: PageMeta;
+  summary: Summary;
+};
+
 const ITEMS_PER_PAGE = 20;
 
-export default function ExpensesPage() {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
+const EMPTY_PAGINATION: PageMeta = {
+  page: 1,
+  limit: ITEMS_PER_PAGE,
+  total: 0,
+  totalPages: 1,
+  hasMore: false,
+};
+
+const EMPTY_SUMMARY: Summary = {
+  allTimeTotal: 0,
+  rangeTotal: 0,
+  byType: [],
+  byMode: [],
+  byDay: [],
+};
+
+/**
+ * §G.3 — what the server component hands down.
+ *
+ * `initialRange` is computed on the SERVER so the first render and this
+ * component's initial state describe the same instants; deriving the window
+ * from `new Date()` in the browser would disagree by however long the response
+ * took and force a redundant refetch. `initialData` is null when the server
+ * read failed, in which case this component falls back to fetching on mount —
+ * the pre-§G.3 behaviour.
+ */
+type Props = {
+  initialRange: { startDate: string; endDate: string; label: string };
+  initialData: ExpensesResponse | null;
+};
+
+export default function ExpensesPage({ initialRange, initialData }: Props) {
+  const [expenses, setExpenses] = useState<Expense[]>(
+    initialData?.expenses ?? []
+  );
+  const [pagination, setPagination] = useState<PageMeta>(
+    initialData?.pagination ?? EMPTY_PAGINATION
+  );
+  const [summary, setSummary] = useState<Summary>(
+    initialData?.summary ?? EMPTY_SUMMARY
+  );
+  // Bumped by the mutation handlers to re-run the load effect. Cheaper and
+  // safer than a second copy of the fetch logic, and it keeps the effect's
+  // dependency array complete.
+  const [reloadToken, setReloadToken] = useState(0);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>({
-    startDate: new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000),
-    endDate: new Date(),
-    label: "Last 30 Days",
+    startDate: new Date(initialRange.startDate),
+    endDate: new Date(initialRange.endDate),
+    label: initialRange.label,
   });
+
+  /**
+   * True while the state below is still exactly what the server rendered.
+   * The mount effect consumes it and skips its fetch, which is what actually
+   * removes the waterfall — seeding initial state alone would not, because the
+   * effect would immediately re-request the identical page.
+   */
+  const hasServerData = useRef(initialData !== null);
   const { currency } = useCurrency();
 
   /**
-   * ET-L5 — the server is the only source of expense state.
+   * §G.4 — the server is the only source of expense state AND of the totals.
    *
-   * Split in two on purpose: `loadExpenses` is a pure loader that returns the
-   * rows (or null on failure) and touches no state, and `fetchExpenses` is the
-   * refresh used by the mutation handlers. Both are `useCallback`-stable with an
-   * empty dependency list, so the mount effect below has a complete dependency
-   * array and does not refetch on every render.
-   *
-   * Neither depends on `dateRange`: filtering is DERIVED from `expenses` at
-   * render time (see the useMemos), never copied into state, so changing the
-   * range costs no network round trip.
+   * This used to fetch `/api/expenses` with no parameters and then filter,
+   * total and slice in the browser. It now sends the selected date range and
+   * the requested page, and the server returns exactly one page of rows plus
+   * MongoDB-computed aggregates. Changing the date range or the page therefore
+   * costs one bounded round trip instead of one unbounded download.
    */
-  const loadExpenses = useCallback(async (): Promise<Expense[] | null> => {
-    const res = await fetch("/api/expenses");
-    if (!res.ok) return null;
-    return (await res.json()) as Expense[];
-  }, []);
+  const loadExpenses = useCallback(
+    async (range: DateRange, page: number): Promise<ExpensesResponse | null> => {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(ITEMS_PER_PAGE),
+        from: range.startDate.toISOString(),
+        to: range.endDate.toISOString(),
+      });
 
-  const fetchExpenses = useCallback(async () => {
-    const data = await loadExpenses();
-    if (data) setExpenses(data);
-  }, [loadExpenses]);
+      const res = await fetch(`/api/expenses?${params.toString()}`);
+      if (!res.ok) return null;
+      return (await res.json()) as ExpensesResponse;
+    },
+    []
+  );
+
+  /** Re-run the load effect after a mutation, without duplicating the fetch. */
+  const fetchExpenses = useCallback(() => {
+    setReloadToken((token) => token + 1);
+  }, []);
 
   const { showNotification } = useNotification();
 
   /**
-   * Derived, not stored. These used to be four pieces of `useState` kept in sync
-   * by hand from inside `fetchExpenses` and `handleDateRangeChange`, which is
-   * exactly the cascading-render pattern `react-hooks/set-state-in-effect`
-   * flagged at the mount effect below. Computing them during render removes the
-   * whole class of "the filter is stale because someone forgot to re-run it".
+   * Read straight off the server-computed summary. These were three client-side
+   * reductions over the full history; they are now single numbers that arrive
+   * with the page and stay correct however large the account grows.
    */
-  const totalSpent = useMemo(
-    () => expenses.reduce((sum, exp) => sum + exp.amount, 0),
-    [expenses]
-  );
+  const totalSpent = summary.allTimeTotal;
+  const filteredSpent = summary.rangeTotal;
 
-  const filteredExpenses = useMemo(
+  const topCategories = useMemo(
     () =>
-      expenses.filter((exp) => {
-        const expDate = new Date(exp.date); // already UTC from MongoDB
-        return expDate >= dateRange.startDate && expDate <= dateRange.endDate;
-      }),
-    [expenses, dateRange]
-  );
-
-  const filteredSpent = useMemo(
-    () => filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0),
-    [filteredExpenses]
+      summary.byType
+        .slice(0, 4)
+        .map(({ type, amount }) => [type, amount] as [string, number]),
+    [summary]
   );
 
   const handleDateRangeChange = (range: DateRange) => {
@@ -105,20 +182,33 @@ export default function ExpensesPage() {
     let cancelled = false;
 
     // The load is awaited inside the effect rather than kicked off by a bare
-    // call: `setExpenses` therefore runs a network round trip later, not
+    // call: the state setters therefore run a network round trip later, not
     // synchronously in the effect body (no cascading render), and `cancelled`
-    // discards a response that arrives after the component has unmounted.
-    async function loadOnMount() {
-      const data = await loadExpenses();
-      if (!cancelled && data) setExpenses(data);
+    // discards a response that arrives after the component has unmounted or
+    // after a newer request has superseded this one.
+    if (hasServerData.current) {
+      // The very first effect run: the server already fetched this exact page
+      // for this exact range. Every later run (range change, page change,
+      // post-mutation refresh) falls through and fetches normally.
+      hasServerData.current = false;
+      return;
     }
 
-    loadOnMount();
+    async function load() {
+      const data = await loadExpenses(dateRange, currentPage);
+      if (cancelled || !data) return;
+
+      setExpenses(data.expenses);
+      setPagination(data.pagination);
+      setSummary(data.summary);
+    }
+
+    load();
 
     return () => {
       cancelled = true;
     };
-  }, [loadExpenses]);
+  }, [loadExpenses, dateRange, currentPage, reloadToken]);
 
   const handleDelete = (id: string) => {
     setDeletingExpenseId(id);
@@ -140,19 +230,19 @@ export default function ExpensesPage() {
     if (res.ok) {
       setShowDeleteConfirm(false);
       setDeletingExpenseId(null);
-      fetchExpenses();
+
+      // Deleting the only row on a page would otherwise leave the user staring
+      // at an empty page N. Stepping back re-runs the effect via `currentPage`;
+      // otherwise ask for a plain refresh.
+      if (expenses.length === 1 && currentPage > 1) {
+        setCurrentPage((page) => page - 1);
+      } else {
+        fetchExpenses();
+      }
+
       showNotification("Expense deleted successfully", "success");
     }
   };
-
-  const categoryTotals = filteredExpenses.reduce<Record<string, number>>((acc, exp) => {
-    acc[exp.type] = (acc[exp.type] || 0) + exp.amount;
-    return acc;
-  }, {});
-
-  const topCategories = Object.entries(categoryTotals)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 4);
 
   const getExpenseTypeColor = (type: string): string => {
     const colors: Record<string, string> = {
@@ -231,7 +321,7 @@ export default function ExpensesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-white text-sm font-medium mb-1">Entries in Range</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">{filteredExpenses.length}</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">{pagination.total}</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-amber-500 flex items-center justify-center">
                 <FontAwesomeIcon icon={faEye} className="text-white w-6 h-6" />
@@ -281,7 +371,7 @@ export default function ExpensesPage() {
             <div className="space-y-4 text-slate-200">
               <div className="rounded-3xl border border-slate-700/70 bg-slate-950/40 p-4">
                 <p className="text-sm text-slate-400">Average spend per day</p>
-                <p className="mt-2 text-2xl font-semibold">{currency} {filteredExpenses.length ? Math.round(filteredSpent / Math.max((dateRange.endDate.getTime() - dateRange.startDate.getTime()) / (1000 * 60 * 60 * 24) + 1, 1)).toLocaleString() : 0}</p>
+                <p className="mt-2 text-2xl font-semibold">{currency} {pagination.total ? Math.round(filteredSpent / Math.max((dateRange.endDate.getTime() - dateRange.startDate.getTime()) / (1000 * 60 * 60 * 24) + 1, 1)).toLocaleString() : 0}</p>
               </div>
               <div className="rounded-3xl border border-slate-700/70 bg-slate-950/40 p-4">
                 <p className="text-sm text-slate-400">Selected range</p>
@@ -313,7 +403,7 @@ export default function ExpensesPage() {
               </div>
             </div>
 
-            {filteredExpenses.length === 0 ? (
+            {pagination.total === 0 ? (
               <div className="text-center py-12">
                 <div className="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center mx-auto mb-4">
                   <FontAwesomeIcon icon={faChartPie} className="text-gray-400 text-3xl" />
@@ -342,8 +432,7 @@ export default function ExpensesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredExpenses
-                      .slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+                    {expenses
                       .map((exp, idx) => (
                         <tr
                           key={exp._id}
@@ -417,8 +506,7 @@ export default function ExpensesPage() {
                     </thead>
 
                     <tbody>
-                      {filteredExpenses
-                        .slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+                      {expenses
                         .map((exp) => (
                           <tr
                             key={exp._id}
@@ -470,8 +558,7 @@ export default function ExpensesPage() {
 
                   {/* ===== MOBILE CARD VIEW ===== */}
                   <div className="md:hidden space-y-4">
-                    {filteredExpenses
-                      .slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+                    {expenses
                       .map((exp) => (
                         <div
                           key={exp._id}
@@ -529,10 +616,10 @@ export default function ExpensesPage() {
                 {/* Pagination */}
                 <Pagination
                   currentPage={currentPage}
-                  totalPages={Math.ceil(filteredExpenses.length / ITEMS_PER_PAGE)}
+                  totalPages={pagination.totalPages}
                   onPageChange={setCurrentPage}
-                  itemsPerPage={ITEMS_PER_PAGE}
-                  totalItems={filteredExpenses.length}
+                  itemsPerPage={pagination.limit}
+                  totalItems={pagination.total}
                 />
               </>
             )}
