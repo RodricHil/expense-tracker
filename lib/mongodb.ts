@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { type Mongoose } from "mongoose";
 
 /**
  * ET-M6: the MONGODB_URI guard lives INSIDE connectDB(), never at module
@@ -22,14 +22,31 @@ function getMongoUri(): string {
   return uri;
 }
 
-let cached = (global as any).mongoose;
+/**
+ * ET-L5: the cache used to be `(global as any).mongoose`, two `no-explicit-any`
+ * lint errors that also erased every type downstream — `connectDB()` returned
+ * `any`, so nothing that consumed a connection was type-checked either.
+ *
+ * The cache is a module-scope singleton hung off `globalThis` on purpose: Next.js
+ * re-evaluates route modules across hot reloads and serverless invocations, and a
+ * plain module-level `let` would hand every reload a fresh (empty) cache and open
+ * a new connection pool each time.
+ */
+type MongooseCache = {
+  conn: Mongoose | null;
+  promise: Promise<Mongoose> | null;
+};
 
-if (!cached) {
-  cached = (global as any).mongoose = {
-    conn: null,
-    promise: null,
-  };
+declare global {
+  // `var` is required here: only `var` declarations merge into the `globalThis`
+  // type. `let`/`const` in a `declare global` block are not visible on it.
+  var __expenseTrackerMongoose: MongooseCache | undefined;
 }
+
+const cached: MongooseCache = (globalThis.__expenseTrackerMongoose ??= {
+  conn: null,
+  promise: null,
+});
 
 export async function connectDB() {
   if (cached.conn) return cached.conn;

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -46,7 +46,9 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({
   onCountryCodeChange,
   defaultCountryCode,
 }) => {
-  const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
+  // ET-L5: the country the user explicitly picked. `null` means "not picked yet",
+  // in which case the default derived from `defaultCountryCode` is shown instead.
+  const [pickedCountry, setPickedCountry] = useState<Country | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [countryList, setCountryList] = useState<Country[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -77,29 +79,36 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({
     fetchCountries();
   }, []);
 
-  /* Sync default country code */
-  /* Sync default country code (run only once) */
+  /**
+   * ET-L5 — the default country is DERIVED, not copied into state.
+   *
+   * This used to be a `useEffect` that called `setSelectedCountry(match)` the
+   * moment the country list arrived — a synchronous setState inside an effect
+   * (`react-hooks/set-state-in-effect`), and a cascading render. Deriving it
+   * during render removes both, and removes the window in which the component
+   * rendered with a stale `null` selection.
+   *
+   * The effect that remains does the one thing an effect is for: telling an
+   * external system (the parent form) about the resolved default. It is not a
+   * state copy, and the ref still limits it to a single notification.
+   */
+  const defaultCountry = useMemo(
+    () => countryList.find((c) => c.code === defaultCountryCode) ?? null,
+    [countryList, defaultCountryCode]
+  );
+
+  const selectedCountry = pickedCountry ?? defaultCountry;
+
   useEffect(() => {
-    if (
-      didInitDefault.current ||
-      !defaultCountryCode ||
-      countryList.length === 0
-    ) return;
+    if (didInitDefault.current || !defaultCountry) return;
 
-    const match = countryList.find(
-      (c) => c.code === defaultCountryCode
-    );
-
-    if (match) {
-      setSelectedCountry(match);
-      onCountryCodeChange(match.code);
-      didInitDefault.current = true; // 🔒 lock after first run
-    }
-  }, [defaultCountryCode, countryList, onCountryCodeChange]);
+    didInitDefault.current = true; // 🔒 notify the parent once, not per render
+    onCountryCodeChange(defaultCountry.code);
+  }, [defaultCountry, onCountryCodeChange]);
 
 
   const handleCountrySelect = (country: Country) => {
-    setSelectedCountry(country);
+    setPickedCountry(country);
     setIsModalOpen(false);
     onCountryCodeChange(country.code);
   };

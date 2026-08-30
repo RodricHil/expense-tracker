@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useCurrency } from "@/app/components/CurrencyProvider";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash, faPen, faChartPie, faEye, faWallet, faCalendarDays } from "@fortawesome/free-solid-svg-icons";
@@ -32,10 +32,7 @@ const ITEMS_PER_PAGE = 20;
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const [totalSpent, setTotalSpent] = useState(0);
-  const [filteredSpent, setFilteredSpent] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null);
@@ -47,56 +44,81 @@ export default function ExpensesPage() {
   });
   const { currency } = useCurrency();
 
-  const fetchExpenses = async () => {
+  /**
+   * ET-L5 — the server is the only source of expense state.
+   *
+   * Split in two on purpose: `loadExpenses` is a pure loader that returns the
+   * rows (or null on failure) and touches no state, and `fetchExpenses` is the
+   * refresh used by the mutation handlers. Both are `useCallback`-stable with an
+   * empty dependency list, so the mount effect below has a complete dependency
+   * array and does not refetch on every render.
+   *
+   * Neither depends on `dateRange`: filtering is DERIVED from `expenses` at
+   * render time (see the useMemos), never copied into state, so changing the
+   * range costs no network round trip.
+   */
+  const loadExpenses = useCallback(async (): Promise<Expense[] | null> => {
     const res = await fetch("/api/expenses");
-    if (res.ok) {
-      const data = await res.json();
-      setExpenses(data);
+    if (!res.ok) return null;
+    return (await res.json()) as Expense[];
+  }, []);
 
-      // Calculate total spent
-      const total = data.reduce((sum: number, exp: Expense) => sum + exp.amount, 0);
-      setTotalSpent(total);
-
-      // Filter and calculate filtered spent
-      filterExpensesByRange(data, dateRange);
-    }
-  };
+  const fetchExpenses = useCallback(async () => {
+    const data = await loadExpenses();
+    if (data) setExpenses(data);
+  }, [loadExpenses]);
 
   const { showNotification } = useNotification();
 
-  const filterExpensesByRange = (
-    allExpenses: Expense[],
-    range: DateRange
-  ) => {
-    const filtered = allExpenses.filter((exp: Expense) => {
-      const expDate = new Date(exp.date); // already UTC from MongoDB
+  /**
+   * Derived, not stored. These used to be four pieces of `useState` kept in sync
+   * by hand from inside `fetchExpenses` and `handleDateRangeChange`, which is
+   * exactly the cascading-render pattern `react-hooks/set-state-in-effect`
+   * flagged at the mount effect below. Computing them during render removes the
+   * whole class of "the filter is stale because someone forgot to re-run it".
+   */
+  const totalSpent = useMemo(
+    () => expenses.reduce((sum, exp) => sum + exp.amount, 0),
+    [expenses]
+  );
 
-      return (
-        expDate >= range.startDate &&
-        expDate <= range.endDate
-      );
-    });
+  const filteredExpenses = useMemo(
+    () =>
+      expenses.filter((exp) => {
+        const expDate = new Date(exp.date); // already UTC from MongoDB
+        return expDate >= dateRange.startDate && expDate <= dateRange.endDate;
+      }),
+    [expenses, dateRange]
+  );
 
-    setFilteredExpenses(filtered);
-
-    const filtered_total = filtered.reduce(
-      (sum: number, exp: Expense) => sum + exp.amount,
-      0
-    );
-
-    setFilteredSpent(filtered_total);
-  };
-
+  const filteredSpent = useMemo(
+    () => filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0),
+    [filteredExpenses]
+  );
 
   const handleDateRangeChange = (range: DateRange) => {
     setDateRange(range);
     setCurrentPage(1); // Reset to page 1 when date range changes
-    filterExpensesByRange(expenses, range);
   };
 
   useEffect(() => {
-    fetchExpenses();
-  }, []);
+    let cancelled = false;
+
+    // The load is awaited inside the effect rather than kicked off by a bare
+    // call: `setExpenses` therefore runs a network round trip later, not
+    // synchronously in the effect body (no cascading render), and `cancelled`
+    // discards a response that arrives after the component has unmounted.
+    async function loadOnMount() {
+      const data = await loadExpenses();
+      if (!cancelled && data) setExpenses(data);
+    }
+
+    loadOnMount();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadExpenses]);
 
   const handleDelete = (id: string) => {
     setDeletingExpenseId(id);

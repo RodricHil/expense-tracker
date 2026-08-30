@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { z } from "zod";
+import { logError } from "@/lib/logger";
 
 /**
  * Single source of truth for API input validation.
@@ -41,8 +42,16 @@ export const SUPPORTED_CURRENCIES = ["₹", "$", "€", "£", "¥", "₺"] as co
 
 const DESCRIPTION_MAX_LENGTH = 500;
 
-/** Positive decimal with at most two fractional digits. */
-const AMOUNT_PATTERN = /^\d+(\.\d{1,2})?$/;
+/**
+ * Positive decimal with at most two fractional digits.
+ *
+ * Written as an alternation rather than the more obvious `^\d+(\.\d{1,2})?$`
+ * because that form nests a bounded quantifier inside an optional group, which
+ * `eslint-plugin-security`'s `detect-unsafe-regex` (safe-regex, star-height
+ * heuristic) rejects. The two forms match exactly the same strings; this one is
+ * provably linear, so the rule can stay at error severity for the whole repo.
+ */
+const AMOUNT_PATTERN = /^\d+$|^\d+\.\d{1,2}$/;
 
 /**
  * Rejects anything that is not a plain 24-character hex ObjectId string, so
@@ -172,8 +181,16 @@ export function handleRouteError(error: unknown): Response {
     return Response.json({ error: error.message }, { status: error.status });
   }
 
-  // Server-side only: never surfaced to the client.
-  console.error("Unhandled API error:", error);
+  // Round 7 — the 500s ET-H4 used to hide are now observable.
+  //
+  // The client still learns nothing: it gets the same generic message plus an
+  // opaque correlation id. Everything diagnostic (error name, message, stack)
+  // goes to the structured log and stays server-side. `errorId` is what makes a
+  // "it just said Internal Server Error" report actionable.
+  const errorId = logError("api.unhandled_error", error);
 
-  return Response.json({ error: "Internal Server Error" }, { status: 500 });
+  return Response.json(
+    { error: "Internal Server Error", errorId },
+    { status: 500 }
+  );
 }

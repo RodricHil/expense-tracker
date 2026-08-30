@@ -1,0 +1,64 @@
+# ET-M7 — the direct fix for "Dependabot is disabled", which the review named as
+# the cause of 25 accumulated advisories and a 0 on the scorecard's
+# Dependency-Update-Tool check.
+#
+# IMPORTANT: this file configures update PULL REQUESTS. Dependabot security
+# ALERTS are a repository setting and cannot be turned on from a file — see
+# SECURITY.md and the Round 7 handover for the exact steps a repo admin must take.
+version: 2
+
+updates:
+  # ---------------------------------------------------------------------------
+  # npm — application dependencies
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 10
+    # ET-L1 — every dependency is pinned to an exact version. `increase` rewrites
+    # the pin to the new exact version instead of widening it into a range, so
+    # Dependabot cannot quietly undo the pinning work from Round 6.
+    versioning-strategy: increase
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+      include: scope
+    labels:
+      - dependencies
+      - security
+    groups:
+      # One PR for the routine patch/minor churn — a stream of ten single-package
+      # PRs a week is how dependency updates end up ignored. Majors stay separate
+      # so each gets its own build-verified review (see Round 8, §H).
+      minor-and-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
+
+  # ---------------------------------------------------------------------------
+  # GitHub Actions — keeps the SHA pins in .github/workflows current
+  # ---------------------------------------------------------------------------
+  #
+  # Pinning actions to a commit SHA is what makes them safe; it is also what makes
+  # them go stale, because a SHA never moves when the action is patched. This
+  # ecosystem closes that gap: Dependabot bumps the SHA and rewrites the trailing
+  # `# vX.Y.Z` comment to match.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci(deps)"
+      include: scope
+    labels:
+      - dependencies
+      - github-actions

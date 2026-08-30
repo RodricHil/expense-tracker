@@ -7,7 +7,7 @@
     "type": "git",
     "url": "git+https://github.com/RodricHil/expense-tracker.git"
   },
-  "license": "UNLICENSED",
+  "license": "MIT",
   "engines": {
     "node": ">=24",
     "npm": ">=12"
@@ -38,6 +38,8 @@
     "@types/react-dom": "19.2.5",
     "eslint": "9.39.5",
     "eslint-config-next": "16.3.3",
+    "eslint-plugin-no-unsanitized": "4.1.5",
+    "eslint-plugin-security": "4.0.1",
     "tailwindcss": "4.3.3",
     "typescript": "6.0.3"
   }

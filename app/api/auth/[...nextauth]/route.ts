@@ -3,6 +3,7 @@ import GoogleProvider from "next-auth/providers/google";
 import type { GoogleProfile } from "next-auth/providers/google";
 import User from "@/models/User";
 import { connectDB } from "@/lib/mongodb";
+import { logError } from "@/lib/logger";
 
 declare module "next-auth" {
   interface User {
@@ -123,9 +124,12 @@ async function persistGoogleUser(profile: GoogleProfile): Promise<void> {
     }
 
     // Log an opaque identifier only — never the email or the display name.
-    console.error(
-      `[auth] failed to persist user record for sub=${profile.sub}: ${describeError(error)}`
-    );
+    // Structured so this failure is searchable rather than a stray log line
+    // (ET-M8 asked for an error channel; Round 7 gave it one).
+    logError("auth.user_persist_failed", error, {
+      sub: profile.sub,
+      detail: describeError(error),
+    });
 
     // Re-thrown with a generic message so the raw driver text (which can carry
     // the address) never reaches NextAuth's own logger.

@@ -15,6 +15,16 @@ import {
 } from "@/lib/validation";
 
 /**
+ * Shape of an expense document as returned by `.lean()`.
+ *
+ * `models/Expense.ts` is an untyped Mongoose model, so queries resolve to `any`.
+ * This is the minimum contract the GET handler relies on: an `amount` that can be
+ * stringified (it is a `Decimal128`), plus whatever else the document carries and
+ * is spread through untouched.
+ */
+type LeanExpense = Record<string, unknown> & { amount: { toString(): string } };
+
+/**
  * ET-M1 — expense ownership.
  *
  * `session.user.id` is the immutable Google `sub`. `session.user.email` is
@@ -101,11 +111,16 @@ export async function GET() {
 
     await connectDB();
 
-    const expenses = await Expense.find(ownerFilter(session))
+    // ET-L5: `models/Expense.ts` exports an untyped Mongoose model, so `.lean()`
+    // resolves to `any`. Narrowing it here — at the single point of use — keeps
+    // the `no-explicit-any` escape hatch out of the code and documents the one
+    // field this handler actually reshapes (Decimal128 is not JSON-serialisable
+    // as a number, so it is stringified by the driver and parsed back here).
+    const expenses: LeanExpense[] = await Expense.find(ownerFilter(session))
       .sort({ date: -1 })
       .lean();
 
-    const formatted = expenses.map((exp: any) => ({
+    const formatted = expenses.map((exp) => ({
       ...exp,
       amount: parseFloat(exp.amount.toString()),
     }));

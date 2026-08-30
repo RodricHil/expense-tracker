@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 };
 
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
   Area,
@@ -43,6 +43,22 @@ import { useCurrency } from "@/app/components/CurrencyProvider";
 
 const timeframeOptions = ["Daily", "Weekly", "Monthly", "Yearly"] as const;
 const palette = ["#2563EB", "#7C3AED", "#0EA5E9", "#F97316", "#14B8A6", "#F43F5E"];
+
+/**
+ * ET-L5 — hydration guard for recharts, without a setState-in-effect.
+ *
+ * `ResponsiveContainer` measures the DOM, so it must not render during SSR or
+ * the server and client markup diverge. The usual `useState(false)` +
+ * `useEffect(() => setIsMounted(true))` pattern does that with a cascading
+ * render and trips `react-hooks/set-state-in-effect`. `useSyncExternalStore`
+ * expresses the same thing directly: the server snapshot is `false`, the client
+ * snapshot is `true`, and nothing ever changes afterwards — hence a subscribe
+ * function that registers no listener. All three callbacks are module-scope
+ * constants so their identities are stable across renders.
+ */
+const subscribeToNothing = () => () => {};
+const getMountedSnapshot = () => true;
+const getServerMountedSnapshot = () => false;
 
 type Timeframe = (typeof timeframeOptions)[number];
 
@@ -70,7 +86,11 @@ export default function AnalyticsClientPage() {
     label: "Last 30 Days",
   });
   const [timeframe, setTimeframe] = useState<Timeframe>("Monthly");
-  const [isMounted, setIsMounted] = useState(false);
+  const isMounted = useSyncExternalStore(
+    subscribeToNothing,
+    getMountedSnapshot,
+    getServerMountedSnapshot
+  );
   const { currency } = useCurrency();
 
   useEffect(() => {
@@ -82,7 +102,6 @@ export default function AnalyticsClientPage() {
     }
 
     loadExpenses();
-    setIsMounted(true);
   }, []);
 
   const filteredExpenses = useMemo(
