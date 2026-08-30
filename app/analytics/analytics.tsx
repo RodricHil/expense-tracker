@@ -6,13 +6,13 @@ export const metadata: Metadata = {
   title: "Analytics | Expense Tracker",
   description: "View detailed analytics and insights about your spending patterns and financial trends",
   alternates: {
-    canonical: "https://expense-tracker-eight-rho-59.vercel.app/analytics",
+    canonical: "https://finex-tracker.vercel.app/analytics",
   },
   keywords: ["expense analytics", "spending insights", "financial reports", "budget analysis"],
   openGraph: {
     title: "Analytics & Insights | Expense Tracker",
     description: "View detailed analytics and insights about your spending patterns and financial trends",
-    url: "https://expense-tracker-eight-rho-59.vercel.app/analytics",
+    url: "https://finex-tracker.vercel.app/analytics",
     type: "website",
   },
 };
