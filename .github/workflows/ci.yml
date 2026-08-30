@@ -1,0 +1,102 @@
+# ET-M7 — the gate that keeps every finding in the platform review fixed.
+#
+# Everything Rounds 1-6 repaired is re-checked here on every pull request and on
+# every push to main: lint (now including the security sinks — see
+# eslint.config.mjs), typecheck, a full production build, and a dependency audit.
+# Nothing merges past a regression.
+#
+# Prerequisite from Round 6: `next build` no longer needs MONGODB_URI or
+# NEXTAUTH_SECRET at module scope, so this job never has to be handed a
+# production credential just to compile.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Least privilege. This workflow only reads the checkout; it publishes nothing,
+# comments nowhere, and writes no packages. Declared at workflow level so a new
+# job cannot silently inherit the repository default.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, typecheck, build, audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      # Every action is pinned to a full commit SHA, not a tag. A tag is mutable:
+      # whoever controls the action repository can repoint v7 at new code and it
+      # runs here with our token. The trailing comment is the human-readable
+      # version and is what Dependabot rewrites when it bumps the pin.
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # No credentials left behind in .git/config for later steps to reuse.
+          persist-credentials: false
+
+      - name: Set up Node from .nvmrc
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          # Single source of truth for the runtime — .nvmrc (Node 24 LTS), the
+          # same file developers use locally. Never a hardcoded version here.
+          node-version-file: .nvmrc
+          cache: npm
+
+      # Node 24 ships npm 11. `.npmrc` sets engine-strict=true and package.json
+      # requires npm >= 12, so `npm ci` below would refuse to run on the stock
+      # npm. This step is what makes the engines field enforceable rather than
+      # decorative.
+      #
+      # Pinned to an exact version, not `npm@12`, per the project's dependency
+      # policy: a floating major means two CI runs a week apart can use different
+      # npm versions and resolve differently. Dependabot does not manage this
+      # line, so bump it deliberately.
+      - name: Upgrade npm (Node 24 ships npm 11; engines requires >= 12)
+        run: npm install -g npm@12.0.2
+
+      - name: Report toolchain versions
+        run: |
+          echo "node $(node --version)"
+          echo "npm  $(npm --version)"
+
+      # `npm ci`, never `npm install`: it installs the committed lockfile exactly
+      # and fails if package.json and package-lock.json have drifted apart.
+      - name: Install dependencies
+        run: npm ci
+
+      # ET-L5 — blocking, not advisory. eslint.config.mjs runs
+      # eslint-plugin-security and eslint-plugin-no-unsanitized at error
+      # severity, so a reintroduced XSS sink (ET-M3) fails this step.
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      # Round 8 — the security regression gate.
+      #
+      # These are not coverage theatre: they assert ownership scoping on all
+      # four expense verbs (the no-IDOR positive control, §E), the Round 3
+      # validation trust boundary (ET-H4/ET-H5/ET-M5) and the Round 2
+      # default-deny middleware matrix (ET-H2). Mongoose, NextAuth and
+      # next/server are mocked, so this step needs no database, no secret and
+      # no network — it runs on the same secret-free checkout as the build.
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # ET-D1..ET-D5 — Round 1 cleared the critical/high advisories; this keeps
+      # them cleared. `--audit-level=high` fails the job on high and critical and
+      # reports (without failing on) moderate and low.
+      - name: Audit dependencies
+        run: npm audit --audit-level=high

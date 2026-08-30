@@ -221,14 +221,20 @@ export default function EditExpenseModal({
 /* Reusable Input Component */
 /* ============================= */
 
-function InputField(props: any) {
+type InputFieldProps = React.InputHTMLAttributes<HTMLInputElement> & {
+  label: string;
+};
+
+// ET-L5: `label` is destructured out rather than spread onto the <input>; it is
+// not a valid DOM attribute and React would warn about it at runtime.
+function InputField({ label, ...inputProps }: InputFieldProps) {
   return (
     <div>
       <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-        {props.label}
+        {label}
       </label>
       <input
-        {...props}
+        {...inputProps}
         required
         className="w-full px-4 py-2.5 rounded-lg 
         border border-gray-300 dark:border-slate-600 
@@ -245,7 +251,17 @@ function InputField(props: any) {
 /* Reusable Select Component */
 /* ============================= */
 
-function SelectField({ label, name, value, onChange, options }: any) {
+type SelectOption = { value: string; label: string };
+
+type SelectFieldProps = {
+  label: string;
+  name: string;
+  value: string;
+  onChange: (event: React.ChangeEvent<HTMLSelectElement>) => void;
+  options: SelectOption[];
+};
+
+function SelectField({ label, name, value, onChange, options }: SelectFieldProps) {
   return (
     <div>
       <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
@@ -264,7 +280,7 @@ function SelectField({ label, name, value, onChange, options }: any) {
           focus:outline-none focus:ring-2 focus:ring-blue-500 
           transition cursor-pointer"
         >
-          {options.map((opt: any) => (
+          {options.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>

@@ -52,7 +52,13 @@ const Notification = ({ message, type, onClose }) => {
 
             {/* Message */}
             <div className="flex-1 text-sm md:text-base font-medium text-gray-800">
-              <span dangerouslySetInnerHTML={{ __html: message }} />
+              {/*
+                ET-M3: rendered as text, never as HTML. React escapes `message`,
+                so a value such as `<img src=x onerror=alert(1)>` shows up as
+                literal characters. Do not reintroduce dangerouslySetInnerHTML
+                here — every caller passes a plain string.
+              */}
+              <span>{message}</span>
             </div>
 
           </motion.div>

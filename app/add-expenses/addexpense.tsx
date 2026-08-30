@@ -60,7 +60,10 @@ export default function AddExpense() {
     const { name, value } = e.target;
 
     if (name === "amount") {
-      const regex = /^\d+(\.\d{0,2})?$/;
+      // Same strings as `^\d+(\.\d{0,2})?$`, expressed without a nested
+      // quantifier so `security/detect-unsafe-regex` is satisfied. This is UX
+      // only — lib/validation.ts is the authoritative check (ET-H4).
+      const regex = /^\d+$|^\d+\.\d{0,2}$/;
       if (value === "" || regex.test(value)) {
         setAmountError("");
         setForm({ ...form, amount: value });

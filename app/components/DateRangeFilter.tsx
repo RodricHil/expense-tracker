@@ -14,6 +14,18 @@ type DateRangeFilterProps = {
   onRangeChange: (range: DateRange) => void;
 };
 
+/** The six preset buttons. Named so the button list can be typed rather than cast. */
+type RangePreset = "today" | "7days" | "30days" | "month" | "year" | "custom";
+
+const RANGE_PRESETS: { id: RangePreset; label: string }[] = [
+  { id: "today", label: "Today" },
+  { id: "7days", label: "7 Days" },
+  { id: "30days", label: "30 Days" },
+  { id: "month", label: "This Month" },
+  { id: "year", label: "This Year" },
+  { id: "custom", label: "Custom" },
+];
+
 const formatLabel = (dateString: string) =>
   new Date(dateString).toLocaleDateString("en-IN", {
     day: "2-digit",
@@ -22,17 +34,13 @@ const formatLabel = (dateString: string) =>
   });
 
 export default function DateRangeFilter({ onRangeChange }: DateRangeFilterProps) {
-  const [selectedRange, setSelectedRange] = useState<
-    "today" | "7days" | "30days" | "month" | "year" | "custom"
-  >("30days");
+  const [selectedRange, setSelectedRange] = useState<RangePreset>("30days");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const startRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLInputElement>(null);
 
-  const getRangeFromPreset = (
-    preset: "today" | "7days" | "30days" | "month" | "year" | "custom"
-  ) => {
+  const getRangeFromPreset = (preset: RangePreset) => {
     const endDate = new Date();
     endDate.setUTCHours(23, 59, 59, 999);
 
@@ -78,9 +86,7 @@ export default function DateRangeFilter({ onRangeChange }: DateRangeFilterProps)
     }
   };
 
-  const handlePresetSelect = (
-    preset: "today" | "7days" | "30days" | "month" | "year" | "custom"
-  ) => {
+  const handlePresetSelect = (preset: RangePreset) => {
     setSelectedRange(preset);
     const range = getRangeFromPreset(preset);
     if (range) {
@@ -112,18 +118,11 @@ export default function DateRangeFilter({ onRangeChange }: DateRangeFilterProps)
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          { id: "today", label: "Today" },
-          { id: "7days", label: "7 Days" },
-          { id: "30days", label: "30 Days" },
-          { id: "month", label: "This Month" },
-          { id: "year", label: "This Year" },
-          { id: "custom", label: "Custom" },
-        ].map((item) => (
+        {RANGE_PRESETS.map((item) => (
           <button
             key={item.id}
             type="button"
-            onClick={() => handlePresetSelect(item.id as any)}
+            onClick={() => handlePresetSelect(item.id)}
             className={
               `rounded-2xl px-4 py-3 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-violet-500 ` +
               (selectedRange === item.id

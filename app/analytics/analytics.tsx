@@ -6,19 +6,26 @@ export const metadata: Metadata = {
   title: "Analytics | Expense Tracker",
   description: "View detailed analytics and insights about your spending patterns and financial trends",
   alternates: {
-    canonical: "https://expense-tracker-eight-rho-59.vercel.app/analytics",
+    canonical: "https://finex-tracker.vercel.app/analytics",
   },
   keywords: ["expense analytics", "spending insights", "financial reports", "budget analysis"],
   openGraph: {
     title: "Analytics & Insights | Expense Tracker",
     description: "View detailed analytics and insights about your spending patterns and financial trends",
-    url: "https://expense-tracker-eight-rho-59.vercel.app/analytics",
+    url: "https://finex-tracker.vercel.app/analytics",
     type: "website",
   },
 };
 
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import Link from "next/link";
 import {
   Area,
@@ -44,17 +51,51 @@ import { useCurrency } from "@/app/components/CurrencyProvider";
 const timeframeOptions = ["Daily", "Weekly", "Monthly", "Yearly"] as const;
 const palette = ["#2563EB", "#7C3AED", "#0EA5E9", "#F97316", "#14B8A6", "#F43F5E"];
 
-type Timeframe = (typeof timeframeOptions)[number];
+/**
+ * ET-L5 — hydration guard for recharts, without a setState-in-effect.
+ *
+ * `ResponsiveContainer` measures the DOM, so it must not render during SSR or
+ * the server and client markup diverge. The usual `useState(false)` +
+ * `useEffect(() => setIsMounted(true))` pattern does that with a cascading
+ * render and trips `react-hooks/set-state-in-effect`. `useSyncExternalStore`
+ * expresses the same thing directly: the server snapshot is `false`, the client
+ * snapshot is `true`, and nothing ever changes afterwards — hence a subscribe
+ * function that registers no listener. All three callbacks are module-scope
+ * constants so their identities are stable across renders.
+ */
+const subscribeToNothing = () => () => {};
+const getMountedSnapshot = () => true;
+const getServerMountedSnapshot = () => false;
 
-type Expense = {
-  _id: string;
-  date: string;
-  description: string;
-  quantity?: number;
-  mode: string;
-  type: string;
-  amount: number;
+/**
+ * Chart labels. All four render in UTC because the server buckets by UTC day;
+ * formatting a UTC-midnight instant in the viewer's local zone would move a
+ * bucket into the previous day for anyone west of Greenwich.
+ */
+const formatDailyKey = (date: Date) =>
+  date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    timeZone: "UTC",
+  });
+
+const getWeekLabel = (date: Date) => {
+  const januaryFirst = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const days = Math.floor((date.getTime() - januaryFirst.getTime()) / 86400000);
+  const week = Math.ceil((days + januaryFirst.getUTCDay() + 1) / 7);
+  return `${date.getUTCFullYear()} W${week}`;
 };
+
+const getMonthLabel = (date: Date) =>
+  date.toLocaleDateString("en-IN", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+
+const getYearLabel = (date: Date) => date.getUTCFullYear().toString();
+
+type Timeframe = (typeof timeframeOptions)[number];
 
 type DateRange = {
   startDate: Date;
@@ -62,102 +103,168 @@ type DateRange = {
   label: string;
 };
 
-export default function AnalyticsClientPage() {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
+/**
+ * §G.4 — what this page now consumes.
+ *
+ * It used to `fetch("/api/expenses")` with no parameters, receive the account's
+ * ENTIRE expense history, and aggregate it in the browser to draw four charts.
+ * The server now does the aggregation in a MongoDB `$facet` pipeline and this
+ * page reads the result, so it downloads no expense rows at all — the payload
+ * is bounded by the length of the selected date range, not by account age.
+ */
+type Summary = {
+  allTimeTotal: number;
+  rangeTotal: number;
+  byType: { type: string; amount: number }[];
+  byMode: { mode: string; amount: number }[];
+  /** One bucket per calendar day (UTC), `YYYY-MM-DD`, ascending. */
+  byDay: { date: string; amount: number }[];
+};
+
+type ExpensesResponse = {
+  summary: Summary;
+};
+
+const EMPTY_SUMMARY: Summary = {
+  allTimeTotal: 0,
+  rangeTotal: 0,
+  byType: [],
+  byMode: [],
+  byDay: [],
+};
+
+/**
+ * §G.3 — the aggregates the server component already computed for the default
+ * window, so the charts have data on first paint instead of after a round trip.
+ * `initialSummary` is null when the server read failed; this component then
+ * fetches on mount, which is the pre-§G.3 behaviour.
+ */
+type Props = {
+  initialRange: { startDate: string; endDate: string; label: string };
+  initialSummary: Summary | null;
+};
+
+export default function AnalyticsClientPage({
+  initialRange,
+  initialSummary,
+}: Props) {
+  const [summary, setSummary] = useState<Summary>(
+    initialSummary ?? EMPTY_SUMMARY
+  );
   const [dateRange, setDateRange] = useState<DateRange>({
-    startDate: new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000),
-    endDate: new Date(),
-    label: "Last 30 Days",
+    startDate: new Date(initialRange.startDate),
+    endDate: new Date(initialRange.endDate),
+    label: initialRange.label,
   });
+
+  /** See the identical guard in app/dashboard/dashboardclient.tsx. */
+  const hasServerData = useRef(initialSummary !== null);
   const [timeframe, setTimeframe] = useState<Timeframe>("Monthly");
-  const [isMounted, setIsMounted] = useState(false);
+  const isMounted = useSyncExternalStore(
+    subscribeToNothing,
+    getMountedSnapshot,
+    getServerMountedSnapshot
+  );
   const { currency } = useCurrency();
 
   useEffect(() => {
-    async function loadExpenses() {
-      const res = await fetch("/api/expenses");
-      if (res.ok) {
-        setExpenses(await res.json());
-      }
+    let cancelled = false;
+
+    if (hasServerData.current) {
+      // The server already aggregated this exact range during its render.
+      hasServerData.current = false;
+      return;
     }
 
-    loadExpenses();
-    setIsMounted(true);
-  }, []);
+    async function loadSummary() {
+      // `limit=1` on purpose: this page renders no expense rows, only
+      // aggregates. Asking for the smallest legal page keeps the response a
+      // fixed size whatever the account contains.
+      const params = new URLSearchParams({
+        page: "1",
+        limit: "1",
+        from: dateRange.startDate.toISOString(),
+        to: dateRange.endDate.toISOString(),
+      });
 
-  const filteredExpenses = useMemo(
+      const res = await fetch(`/api/expenses?${params.toString()}`);
+      if (!res.ok) return;
+
+      const body = (await res.json()) as ExpensesResponse;
+      if (!cancelled) setSummary(body.summary);
+    }
+
+    loadSummary();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dateRange]);
+
+  const totalSpent = summary.rangeTotal;
+
+  const categoryTotals = useMemo(
     () =>
-      expenses.filter((expense) => {
-        const date = new Date(expense.date);
-        return date >= dateRange.startDate && date <= dateRange.endDate;
-      }),
-    [expenses, dateRange]
+      summary.byType.map(
+        ({ type, amount }) => [type, amount] as [string, number]
+      ),
+    [summary]
   );
 
-  const totalSpent = useMemo(
-    () => filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0),
-    [filteredExpenses]
+  const modeTotals = useMemo(
+    () => summary.byMode.map(({ mode, amount }) => ({ mode, amount })),
+    [summary]
   );
 
-  const categoryTotals = useMemo(() => {
-    const totals: Record<string, number> = {};
-    filteredExpenses.forEach((expense) => {
-      totals[expense.type] = (totals[expense.type] || 0) + expense.amount;
-    });
-    return Object.entries(totals).sort((a, b) => b[1] - a[1]);
-  }, [filteredExpenses]);
+  /**
+   * The daily buckets, parsed back into `Date`s. `%Y-%m-%d` is produced by the
+   * server in UTC, so it is parsed as UTC midnight here and every label
+   * formatter below also renders in UTC — otherwise a bucket would drift a day
+   * for viewers west of Greenwich.
+   */
+  const dayBuckets = useMemo(
+    () =>
+      summary.byDay.map(({ date, amount }) => ({
+        date: new Date(`${date}T00:00:00.000Z`),
+        amount,
+      })),
+    [summary]
+  );
 
-  const modeTotals = useMemo(() => {
-    const totals: Record<string, number> = {};
-    filteredExpenses.forEach((expense) => {
-      totals[expense.mode] = (totals[expense.mode] || 0) + expense.amount;
-    });
-    return Object.entries(totals).map(([mode, amount]) => ({ mode, amount }));
-  }, [filteredExpenses]);
+  const buildSeries = useCallback(
+    (groupBy: (date: Date) => string, rangeDays = false) => {
+      const totals: Record<string, number> = {};
 
-  const formatDailyKey = (date: Date) =>
-    date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+      // Rolling day buckets up into weeks/months/years is a client-side sum over
+      // at most one entry per day in the range — a bounded amount of work on a
+      // payload that no longer contains any expense rows.
+      dayBuckets.forEach(({ date, amount }) => {
+        const key = groupBy(date);
+        totals[key] = (totals[key] || 0) + amount;
+      });
 
-  const getWeekLabel = (date: Date) => {
-    const januaryFirst = new Date(date.getFullYear(), 0, 1);
-    const days = Math.floor((date.getTime() - januaryFirst.getTime()) / 86400000);
-    const week = Math.ceil((days + januaryFirst.getDay() + 1) / 7);
-    return `${date.getFullYear()} W${week}`;
-  };
+      const series = Object.entries(totals)
+        .map(([label, amount]) => ({ label, amount }))
+        .sort((a, b) => (a.label > b.label ? 1 : -1));
 
-  const getMonthLabel = (date: Date) =>
-    date.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
-
-  const getYearLabel = (date: Date) => date.getFullYear().toString();
-
-  const buildSeries = (groupBy: (date: Date) => string, rangeDays = false) => {
-    const totals: Record<string, number> = {};
-
-    filteredExpenses.forEach((expense) => {
-      const key = groupBy(new Date(expense.date));
-      totals[key] = (totals[key] || 0) + expense.amount;
-    });
-
-    const series = Object.entries(totals)
-      .map(([label, amount]) => ({ label, amount }))
-      .sort((a, b) => (a.label > b.label ? 1 : -1));
-
-    if (rangeDays && filteredExpenses.length) {
-      const list: { label: string; amount: number }[] = [];
-      const dayMs = 24 * 60 * 60 * 1000;
-      for (
-        let current = new Date(dateRange.startDate);
-        current <= dateRange.endDate;
-        current = new Date(current.getTime() + dayMs)
-      ) {
-        const label = formatDailyKey(current);
-        list.push({ label, amount: totals[label] || 0 });
+      if (rangeDays && dayBuckets.length) {
+        const list: { label: string; amount: number }[] = [];
+        const dayMs = 24 * 60 * 60 * 1000;
+        for (
+          let current = new Date(dateRange.startDate);
+          current <= dateRange.endDate;
+          current = new Date(current.getTime() + dayMs)
+        ) {
+          const label = formatDailyKey(current);
+          list.push({ label, amount: totals[label] || 0 });
+        }
+        return list;
       }
-      return list;
-    }
 
-    return series;
-  };
+      return series;
+    },
+    [dayBuckets, dateRange]
+  );
 
   const chartData = useMemo(() => {
     switch (timeframe) {
@@ -170,7 +277,7 @@ export default function AnalyticsClientPage() {
       default:
         return buildSeries(getMonthLabel);
     }
-  }, [filteredExpenses, timeframe, dateRange]);
+  }, [buildSeries, timeframe]);
 
   const averageDaily = useMemo(() => {
     const diffDays = Math.max(

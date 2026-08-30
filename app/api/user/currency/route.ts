@@ -2,48 +2,62 @@ import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import {
+  currencyUpdateSchema,
+  handleRouteError,
+  notFound,
+  parseJsonBody,
+  unauthorized,
+} from "@/lib/validation";
 
-const validCurrencies = ["₹", "$", "€", "£", "¥", "₺"];
+const DEFAULT_CURRENCY = "₹";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    return new Response("Unauthorized", { status: 401 });
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return unauthorized();
+    }
+
+    await connectDB();
+    const user = await User.findOne({ email: session.user.email }).lean();
+
+    if (!user) {
+      return notFound();
+    }
+
+    return Response.json({
+      currency: user.preferredCurrency || DEFAULT_CURRENCY,
+    });
+  } catch (error) {
+    return handleRouteError(error);
   }
-
-  await connectDB();
-  const user = await User.findOne({ email: session.user.email }).lean();
-
-  if (!user) {
-    return new Response("User not found", { status: 404 });
-  }
-
-  return Response.json({ currency: user.preferredCurrency || "₹" });
 }
 
 export async function PUT(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    return new Response("Unauthorized", { status: 401 });
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return unauthorized();
+    }
+
+    const { currency } = currencyUpdateSchema.parse(await parseJsonBody(req));
+
+    await connectDB();
+    const user = await User.findOneAndUpdate(
+      { email: session.user.email },
+      { preferredCurrency: currency },
+      { new: true }
+    ).lean();
+
+    if (!user) {
+      return notFound();
+    }
+
+    return Response.json({
+      currency: user.preferredCurrency || DEFAULT_CURRENCY,
+    });
+  } catch (error) {
+    return handleRouteError(error);
   }
-
-  const body = await req.json();
-  const currency = body?.currency?.toString();
-
-  if (!currency || !validCurrencies.includes(currency)) {
-    return new Response("Invalid currency", { status: 400 });
-  }
-
-  await connectDB();
-  const user = await User.findOneAndUpdate(
-    { email: session.user.email },
-    { preferredCurrency: currency },
-    { new: true }
-  ).lean();
-
-  if (!user) {
-    return new Response("User not found", { status: 404 });
-  }
-
-  return Response.json({ currency: user.preferredCurrency || "₹" });
 }

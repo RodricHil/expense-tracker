@@ -1,0 +1,93 @@
+# ET-M7 — SAST and secret scanning on every pull request.
+#
+# The OpenSSF scorecard scored this repository 0 for SAST and 0 for
+# Dependency-Update-Tool because no workflow existed at all. This file supplies
+# the SAST half (semgrep) and adds secret scanning (gitleaks); .github/dependabot.yml
+# supplies the other half.
+#
+# Kept separate from ci.yml on purpose: these two jobs answer a different
+# question ("is anything dangerous in this diff?") on a different cadence, and a
+# slow registry fetch in semgrep should not hold up the build signal.
+name: Security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Least privilege, declared at workflow level. Neither job writes anything back
+# to the repository; gitleaks is explicitly configured below not to comment.
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  semgrep:
+    name: Semgrep SAST
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # Pinned by digest, not by tag — a tag can be repointed at new code by
+    # whoever controls the registry namespace, exactly like a mutable action tag.
+    # The digest is the multi-arch manifest list for semgrep/semgrep:1.174.0.
+    # Running semgrep as the job container rather than through a marketplace
+    # action also means no third-party JavaScript executes in the runner at all.
+    container:
+      image: semgrep/semgrep@sha256:f1f7b71861c7b28b6e0f661225a2c4f58a484f5d0f182465c6d6b3b22f972ade # 1.174.0
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # p/security-audit  — general injection / crypto / auth sinks
+      # p/typescript      — TS-specific correctness and security rules
+      # p/react           — dangerouslySetInnerHTML, href injection, refs (ET-M3)
+      # p/nextjs          — App Router and server-action specific rules
+      #
+      # `--error` makes any finding a non-zero exit, so a hit blocks the merge
+      # instead of scrolling past in the log. Verified locally at the time of
+      # writing: 90 rules over 49 files, 0 findings.
+      - name: Semgrep scan
+        run: |
+          semgrep scan \
+            --config p/security-audit \
+            --config p/typescript \
+            --config p/react \
+            --config p/nextjs \
+            --error \
+            --metrics=off \
+            .
+
+  gitleaks:
+    name: Gitleaks secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out the full history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # ET-H1 is the reason this scans history and not just the working tree:
+          # the hardcoded NEXTAUTH_SECRET fallback lived in this repository's
+          # commits, and a secret that has been committed once stays committed.
+          fetch-depth: 0
+          persist-credentials: false
+
+      # gitleaks-action is free for personal and public repositories; an
+      # organisation-owned repository additionally needs GITLEAKS_LICENSE set as
+      # a secret. If this repository is ever transferred to an org, add it.
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No PR comments and no artifact upload: both would require write
+          # permissions this workflow deliberately does not have. The job summary
+          # and the step exit code carry the result.
+          GITLEAKS_ENABLE_COMMENTS: "false"
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+          GITLEAKS_ENABLE_SUMMARY: "true"
