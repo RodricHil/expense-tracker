@@ -17,6 +17,7 @@ type CurrencyContextType = {
   currency: string;
   setCurrency: (currency: string) => Promise<void>;
   options: typeof currencyOptions;
+  /** True until the signed-in user's saved preference is known. */
   loading: boolean;
 };
 
@@ -30,55 +31,50 @@ export function useCurrency() {
   return context;
 }
 
-export default function CurrencyProvider({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession();
-  const [currency, setCurrencyState] = useState("₹");
-  const [loading, setLoading] = useState(true);
+/**
+ * `initialCurrency` is read by the root layout on the server. When present the
+ * preference is known on first paint and no request is made; otherwise it is
+ * fetched once per signed-in user. `loading` is derived from which user the
+ * current value belongs to, so it can never report a stale user's currency as
+ * settled.
+ */
+export default function CurrencyProvider({ children, initialCurrency = null }: { children: React.ReactNode; initialCurrency?: string | null }) {
+  const { data: session, status } = useSession();
+  const email = session?.user?.email ?? null;
+  const [state, setState] = useState<{ currency: string; loadedFor: string | null }>({
+    currency: initialCurrency ?? "₹",
+    loadedFor: initialCurrency ? email : null,
+  });
   const { showNotification } = useNotification();
 
   useEffect(() => {
+    if (status !== "authenticated" || !email || state.loadedFor === email) return;
     let active = true;
 
     async function loadPreferredCurrency() {
-      if (!session?.user?.email) {
-        if (active) {
-          setLoading(false);
-        }
-        return;
-      }
-
+      let next: string | null = null;
       try {
         const res = await fetch("/api/user/currency");
-
-        if (!res.ok) {
-          throw new Error("Unable to load currency preference");
-        }
-
+        if (!res.ok) throw new Error("Unable to load currency preference");
         const data = await res.json();
-        if (active && data?.currency) {
-          setCurrencyState(data.currency);
-        }
+        next = typeof data?.currency === "string" ? data.currency : null;
       } catch {
-        if (active) {
-          showNotification("Unable to load currency preference", "error");
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
+        if (active) showNotification("Couldn’t load your currency preference.", "warning");
       }
+      if (active) setState((current) => ({ currency: next ?? current.currency, loadedFor: email }));
     }
 
     loadPreferredCurrency();
-
     return () => {
       active = false;
     };
-  }, [session?.user?.email, showNotification]);
+  }, [status, email, state.loadedFor, showNotification]);
+
+  const loading = status === "loading" || (status === "authenticated" && state.loadedFor !== email);
 
   const setCurrency = async (nextCurrency: string) => {
-    if (!session?.user?.email) return;
-    if (nextCurrency === currency) return;
+    if (!email) return;
+    if (nextCurrency === state.currency) return;
 
     const valid = currencyOptions.some((option) => option.symbol === nextCurrency);
     if (!valid) return;
@@ -95,16 +91,16 @@ export default function CurrencyProvider({ children }: { children: React.ReactNo
       }
 
       const data = await res.json();
-      setCurrencyState(data.currency || nextCurrency);
+      setState({ currency: data.currency || nextCurrency, loadedFor: email });
       showNotification("Currency preference saved", "success");
     } catch {
-      showNotification("Unable to save currency preference", "error");
+      showNotification("Couldn’t save your currency preference. Try again.", "error");
     }
   };
 
   return (
     <CurrencyContext.Provider
-      value={{ currency, options: currencyOptions, setCurrency, loading }}
+      value={{ currency: state.currency, options: currencyOptions, setCurrency, loading }}
     >
       {children}
     </CurrencyContext.Provider>

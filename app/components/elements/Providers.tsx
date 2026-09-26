@@ -1,18 +1,30 @@
 "use client";
 
 import { SessionProvider } from "next-auth/react";
+import type { Session } from "next-auth";
 import NotificationProvider from "./NotificationProvider";
 import CurrencyProvider from "../CurrencyProvider";
+import CardsProvider from "../CardsProvider";
+import type { SavedCard } from "@/lib/payment";
 
 export default function Providers({
   children,
+  session,
+  initialCurrency = null,
+  initialCards = null,
 }: {
   children: React.ReactNode;
+  /** `undefined` means "not resolved on the server"; the client resolves it. */
+  session?: Session | null;
+  initialCurrency?: string | null;
+  initialCards?: SavedCard[] | null;
 }) {
   return (
-    <SessionProvider>
+    <SessionProvider session={session}>
       <NotificationProvider>
-        <CurrencyProvider>{children}</CurrencyProvider>
+        <CurrencyProvider initialCurrency={initialCurrency}>
+          <CardsProvider initialCards={initialCards}>{children}</CardsProvider>
+        </CurrencyProvider>
       </NotificationProvider>
     </SessionProvider>
   );

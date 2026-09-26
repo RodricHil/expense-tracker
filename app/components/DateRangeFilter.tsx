@@ -16,6 +16,8 @@ type DateRange = {
 
 type DateRangeFilterProps = {
   onRangeChange: (range: DateRange) => void;
+  /** Further filters (e.g. payment method), shown as extra rows in the same panel. */
+  children?: React.ReactNode;
 };
 
 /** The six preset buttons. Named so the button list can be typed rather than cast. */
@@ -38,7 +40,7 @@ const formatLabel = (dateString: string) =>
     year: "numeric",
   });
 
-export default function DateRangeFilter({ onRangeChange }: DateRangeFilterProps) {
+export default function DateRangeFilter({ onRangeChange, children }: DateRangeFilterProps) {
   const [selectedRange, setSelectedRange] = useState<RangePreset>("30days");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -136,9 +138,9 @@ export default function DateRangeFilter({ onRangeChange }: DateRangeFilterProps)
   };
 
   return (
-    <section className="panel" aria-label="Date filter">
+    <section className="panel py-4" aria-label="Filters">
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <span className="muted flex items-center gap-2"><FontAwesomeIcon icon={faCalendarDays} className="h-4 w-4" />Date range</span>
+        <span className="text-secondary font-medium flex items-center gap-2"><FontAwesomeIcon icon={faCalendarDays} className="h-3.5 w-3.5 text-stone-500" aria-hidden="true" />Date range</span>
         <div className="segmented" role="group" aria-label="Date presets">
           {RANGE_PRESETS.map((item) => <button key={item.id} type="button" className="segment" aria-pressed={selectedRange === item.id} onClick={() => handlePresetSelect(item.id)}>{item.label}</button>)}
         </div>
@@ -148,12 +150,13 @@ export default function DateRangeFilter({ onRangeChange }: DateRangeFilterProps)
           <div className="field"><span>From</span><DatePicker label="Start date" value={customStart} max={customEnd || undefined} onChange={setCustomStart} /></div>
           <div className="field"><span>To</span><DatePicker label="End date" value={customEnd} min={customStart || undefined} onChange={setCustomEnd} /></div>
         </div>
-        {customStart && customEnd && customStart > customEnd && <p role="alert" className="text-red-300 mt-3">End date must be on or after start date.</p>}
+        {customStart && customEnd && customStart > customEnd && <p role="alert" className="field-error mt-3">End date must be on or after start date.</p>}
         <div className="flex justify-end gap-3 mt-5">
           <button type="button" className="btn" onClick={handleClear}>Reset</button>
           <button type="button" className="btn btn-primary" disabled={!isDateKey(customStart) || !isDateKey(customEnd) || customStart > customEnd} onClick={handleCustomDateChange}>Apply range</button>
         </div>
       </div>}
+      {children && <div className="mt-4 pt-4 border-t border-stone-800">{children}</div>}
     </section>
   );
 }

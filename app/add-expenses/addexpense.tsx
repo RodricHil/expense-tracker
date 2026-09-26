@@ -4,10 +4,13 @@ import { useSyncExternalStore, useState } from "react";
 import { localDateKey } from "@/lib/format";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import ExpenseFields from "@/app/components/ExpenseFields";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faArrowLeft, faCheck } from "@fortawesome/free-solid-svg-icons";
+import ExpenseFields, { cardSelectionError, paymentPayload } from "@/app/components/ExpenseFields";
 import Navbar from "@/app/components/Navbar";
 import { useNotification } from "@/app/components/elements/NotificationProvider";
 import { useCurrency } from "@/app/components/CurrencyProvider";
+import { useCards } from "@/app/components/CardsProvider";
 
 
 
@@ -22,14 +25,17 @@ export default function AddExpense() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [amountError, setAmountError] = useState("");
+  const [cardError, setCardError] = useState("");
   const { showNotification } = useNotification();
   const { currency } = useCurrency();
+  const { cards } = useCards();
 
   const [form, setForm] = useState({
     date: null as string | null,
     description: "",
     quantity: "",
     mode: "online",
+    cardId: null as string | null,
     type: "food",
     amount: "",
   });
@@ -53,6 +59,7 @@ export default function AddExpense() {
       return;
     }
 
+    if (name === "mode" || name === "cardId") setCardError("");
     setForm({ ...form, [name]: value });
   };
 
@@ -61,6 +68,11 @@ export default function AddExpense() {
 
     if (!form.amount || Number(form.amount) <= 0) {
       setAmountError("Enter an amount greater than zero.");
+      return;
+    }
+    const cardProblem = cardSelectionError(form, cards);
+    if (cardProblem) {
+      setCardError(cardProblem);
       return;
     }
 
@@ -72,6 +84,7 @@ export default function AddExpense() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          ...paymentPayload(form),
           date: form.date ?? today,
           quantity: form.quantity ? Number(form.quantity) : null,
           amount: Number(form.amount),
@@ -82,7 +95,7 @@ export default function AddExpense() {
         showNotification("Expense added successfully", "success");
         router.push("/dashboard");
       } else {
-        showNotification("Failed to add expense", "error");
+        showNotification("Couldn’t add the expense. Check the details and try again.", "error");
       }
     } catch {
       showNotification("Unable to save expense. Please try again.", "error");
@@ -93,16 +106,18 @@ export default function AddExpense() {
 
   return <>
     <Navbar />
-    <main className="app-shell" style={{ maxWidth: 760 }}>
-      <div className="page-heading"><h1>Add expense</h1><Link href="/dashboard" className="text-link">All expenses</Link></div>
-      <section className="panel">
-        <form onSubmit={handleSubmit}>
-          <fieldset disabled={isLoading}>
-            <ExpenseFields form={{ ...form, date: form.date ?? today }} currency={currency} onChange={handleChange} amountError={amountError} />
-            <div className="form-actions"><Link href="/dashboard" className="btn">Cancel</Link><button type="submit" disabled={isLoading} className="btn btn-primary">{isLoading ? "Saving…" : "Save expense"}</button></div>
-          </fieldset>
-        </form>
-      </section>
+    <main className="app-shell">
+      <div className="content-narrow">
+        <div className="page-heading"><div><h1>Add expense</h1><p>Record a purchase and how you paid for it.</p></div><Link href="/dashboard" className="text-link"><FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />All expenses</Link></div>
+        <section className="panel" aria-label="Expense details">
+          <form onSubmit={handleSubmit}>
+            <fieldset disabled={isLoading} className="border-0 p-0 m-0 min-w-0">
+              <ExpenseFields form={{ ...form, date: form.date ?? today }} currency={currency} onChange={handleChange} amountError={amountError} cardError={cardError} />
+              <div className="form-actions"><Link href="/dashboard" className="btn">Cancel</Link><button type="submit" disabled={isLoading} className="btn btn-primary">{!isLoading && <FontAwesomeIcon icon={faCheck} aria-hidden="true" />}{isLoading ? "Saving…" : "Save expense"}</button></div>
+            </fieldset>
+          </form>
+        </section>
+      </div>
     </main>
   </>;
 }

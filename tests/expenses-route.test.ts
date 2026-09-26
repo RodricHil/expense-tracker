@@ -55,6 +55,8 @@ vi.mock("next-auth/providers/google", () => ({
 vi.mock("@/lib/mongodb", () => ({ connectDB: () => connectDB() }));
 vi.mock("@/models/Expense", () => ({ default: expenseModel }));
 vi.mock("@/models/User", () => ({ default: { findOneAndUpdate: vi.fn() } }));
+const cardModel = { exists: vi.fn() };
+vi.mock("@/models/Card", () => ({ default: cardModel }));
 
 const { DELETE, GET, POST, PUT } = await import("@/app/api/expenses/route");
 
@@ -491,5 +493,100 @@ describe("error handling (ET-H4)", () => {
     expect(JSON.stringify(body)).not.toContain("db.internal");
     expect(JSON.stringify(body)).not.toContain("svc_prod");
     expect(typeof body.errorId).toBe("string");
+  });
+});
+
+describe("card payments — saved card references", () => {
+  const CARD_ID = "65a1b2c3d4e5f60718293a4b";
+
+  it("stores the card id when it belongs to the caller", async () => {
+    signIn();
+    cardModel.exists.mockResolvedValue({ _id: CARD_ID });
+    expenseModel.create.mockResolvedValue({ toObject: () => ({}), amount: "42.50" });
+
+    const res = await POST(jsonRequest("POST", { ...validBody, mode: "card", cardId: CARD_ID }));
+
+    expect(res.status).toBe(200);
+    expect(cardModel.exists).toHaveBeenCalledWith({ _id: CARD_ID, userId: OWNER_SUB });
+    expect(expenseModel.create).toHaveBeenCalledWith(expect.objectContaining({ mode: "card", cardId: CARD_ID }));
+  });
+
+  it("NO IDOR — refuses a card that belongs to somebody else", async () => {
+    signIn();
+    cardModel.exists.mockResolvedValue(null);
+
+    const res = await POST(jsonRequest("POST", { ...validBody, mode: "card", cardId: CARD_ID }));
+
+    expect(res.status).toBe(400);
+    expect(expenseModel.create).not.toHaveBeenCalled();
+  });
+
+  it("drops a card id sent with a cash payment without looking it up", async () => {
+    signIn();
+    expenseModel.create.mockResolvedValue({ toObject: () => ({}), amount: "42.50" });
+
+    await POST(jsonRequest("POST", { ...validBody, mode: "cash", cardId: CARD_ID }));
+
+    expect(cardModel.exists).not.toHaveBeenCalled();
+    expect(expenseModel.create).toHaveBeenCalledWith(expect.objectContaining({ mode: "cash", cardId: null }));
+  });
+
+  it("checks card ownership on update as well", async () => {
+    signIn();
+    cardModel.exists.mockResolvedValue(null);
+
+    const res = await PUT(jsonRequest("PUT", { ...validBody, id: VICTIM_EXPENSE_ID, mode: "card", cardId: CARD_ID }));
+
+    expect(res.status).toBe(400);
+    expect(expenseModel.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/expenses — payment filter", () => {
+  const CARD_ID = "65a1b2c3d4e5f60718293a4b";
+
+  it("narrows the rows and every range facet, but not the all-time total", async () => {
+    signIn();
+
+    await GET(new Request(`https://example.test/api/expenses?mode=card&cardId=${CARD_ID}`));
+
+    expect(expenseModel.find).toHaveBeenCalledWith(
+      expect.objectContaining({ ...ownerFilter(), mode: "card", cardId: CARD_ID })
+    );
+    const pipeline = expenseModel.aggregate.mock.calls[0][0];
+    expect(pipeline[0]).toEqual({ $match: ownerFilter() });
+    const facets = pipeline[1].$facet;
+    for (const key of ["rangeTotal", "byType", "byMode", "byDay"]) {
+      expect(facets[key][0].$match).toMatchObject({ mode: "card", cardId: CARD_ID });
+    }
+    expect(JSON.stringify(facets.allTime)).not.toContain("card");
+  });
+
+  it("applies a method-only filter without a card condition", async () => {
+    signIn();
+
+    await GET(new Request("https://example.test/api/expenses?mode=cash"));
+
+    const filter = expenseModel.find.mock.calls[0][0];
+    expect(filter.mode).toBe("cash");
+    expect(filter).not.toHaveProperty("cardId");
+  });
+
+  it("rejects an invalid mode with a 400 and issues no query", async () => {
+    signIn();
+
+    const res = await GET(new Request("https://example.test/api/expenses?mode=crypto"));
+
+    expect(res.status).toBe(400);
+    expect(expenseModel.find).not.toHaveBeenCalled();
+  });
+
+  it("refuses a card payment with no card", async () => {
+    signIn();
+
+    const res = await POST(jsonRequest("POST", { ...validBody, mode: "card" }));
+
+    expect(res.status).toBe(400);
+    expect(expenseModel.create).not.toHaveBeenCalled();
   });
 });

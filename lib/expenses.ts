@@ -139,9 +139,9 @@ function toPlainRows(rows: LeanExpense[]): Record<string, unknown>[] {
  */
 export async function loadExpensePage(
   session: Session,
-  query: ExpenseQuery
+  query: Omit<ExpenseQuery, "mode" | "cardId"> & Partial<Pick<ExpenseQuery, "mode" | "cardId">>
 ): Promise<ExpensePage> {
-  const { page, limit, from, to } = query;
+  const { page, limit, from, to, mode = null, cardId = null } = query;
 
   await connectDB();
 
@@ -155,6 +155,15 @@ export async function loadExpensePage(
   const dateFilter: PipelineStage.Match["$match"] =
     from || to ? { date: dateRange } : {};
 
+  // Optional payment filter. Values are zod-validated enum members and
+  // ObjectId strings, never raw client objects. It narrows the rows and every
+  // range facet; `allTime` stays the whole account, as its label says.
+  const rangeFilter: PipelineStage.Match["$match"] = {
+    ...dateFilter,
+    ...(mode ? { mode } : {}),
+    ...(cardId ? { cardId } : {}),
+  };
+
   // `$match` on the owner FIRST so every facet below inherits the ownership
   // scope; the per-facet `$match` only narrows by date.
   const summaryPipeline: PipelineStage[] = [
@@ -165,7 +174,7 @@ export async function loadExpensePage(
           { $group: { _id: null, amount: { $sum: { $toDouble: "$amount" } } } },
         ],
         rangeTotal: [
-          { $match: dateFilter },
+          { $match: rangeFilter },
           {
             $group: {
               _id: null,
@@ -175,14 +184,14 @@ export async function loadExpensePage(
           },
         ],
         byType: [
-          { $match: dateFilter },
+          { $match: rangeFilter },
           {
             $group: { _id: "$type", amount: { $sum: { $toDouble: "$amount" } } },
           },
           { $sort: { amount: -1 } },
         ],
         byMode: [
-          { $match: dateFilter },
+          { $match: rangeFilter },
           {
             $group: { _id: "$mode", amount: { $sum: { $toDouble: "$amount" } } },
           },
@@ -193,7 +202,7 @@ export async function loadExpensePage(
         // lets the analytics page draw daily/weekly/monthly/yearly series
         // without ever downloading a single expense row.
         byDay: [
-          { $match: dateFilter },
+          { $match: rangeFilter },
           {
             $group: {
               _id: {
@@ -213,7 +222,7 @@ export async function loadExpensePage(
   ];
 
   const [rows, facetResult] = await Promise.all([
-    Expense.find({ ...owner, ...dateFilter })
+    Expense.find({ ...owner, ...rangeFilter })
       .sort({ date: -1 })
       .skip((page - 1) * limit)
       .limit(limit)

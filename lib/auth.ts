@@ -174,7 +174,7 @@ export const authOptions: NextAuthOptions = {
       if (user?.id) {
         token.id = user.id;
       }
-      if (user) {
+      if (user?.image) {
         token.image = user.image;
       }
       return token;
@@ -184,7 +184,11 @@ export const authOptions: NextAuthOptions = {
         // ET-M1: expose the stable Google `sub` to server code as
         // `session.user.id`. API routes scope data by this, not by email.
         session.user.id = token.id;
-        session.user.image = token.image;
+        // Tokens minted before `token.image` existed only carry NextAuth's own
+        // `picture` claim. Assigning `token.image` unconditionally replaced the
+        // avatar NextAuth had already put on the session with `undefined`,
+        // which is why the Google profile picture was sometimes missing.
+        session.user.image = token.image ?? token.picture ?? session.user.image ?? undefined;
       }
       return session;
     },

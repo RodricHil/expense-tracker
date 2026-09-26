@@ -1,6 +1,11 @@
 import mongoose from "mongoose";
 import { z } from "zod";
 import { logError } from "@/lib/logger";
+import {
+  CARD_NAME_MAX_LENGTH,
+  CARD_TYPES,
+  PAYMENT_METHODS,
+} from "@/lib/payment";
 
 /**
  * Single source of truth for API input validation.
@@ -11,7 +16,7 @@ import { logError } from "@/lib/logger";
  * cannot smuggle `_id`, `createdAt`, `updatedAt` or `userId` into a write.
  */
 
-export const EXPENSE_MODES = ["online", "cash"] as const;
+export const EXPENSE_MODES = PAYMENT_METHODS;
 
 /** Copied verbatim from the `type` enum in models/Expense.ts. */
 export const EXPENSE_TYPES = [
@@ -108,14 +113,42 @@ const expenseFields = {
   mode: z.enum(EXPENSE_MODES),
   type: z.enum(EXPENSE_TYPES),
   amount: amountSchema,
+  cardId: objectIdSchema.nullable().optional(),
 };
 
-export const expenseCreateSchema = z.object(expenseFields);
+/**
+ * A card payment must name one of the caller's saved cards; online and cash
+ * payments never carry one. A stale id from a form the user switched away from
+ * is dropped here rather than persisted. Whether the id belongs to the caller
+ * is checked by the route, which is the only place that knows who the caller is.
+ */
+function normaliseCardId<T extends { mode: string; cardId?: string | null }>(
+  expense: T
+): Omit<T, "cardId"> & { cardId: string | null } {
+  return {
+    ...expense,
+    cardId: expense.mode === "card" ? (expense.cardId ?? null) : null,
+  };
+}
 
-export const expenseUpdateSchema = z.object({
-  id: objectIdSchema,
-  ...expenseFields,
-});
+const requireCardForCardPayment = {
+  check: (expense: { mode: string; cardId?: string | null }) =>
+    expense.mode !== "card" || Boolean(expense.cardId),
+  params: { message: "is required for a card payment", path: ["cardId"] },
+};
+
+export const expenseCreateSchema = z
+  .object(expenseFields)
+  .refine(requireCardForCardPayment.check, requireCardForCardPayment.params)
+  .transform(normaliseCardId);
+
+export const expenseUpdateSchema = z
+  .object({
+    id: objectIdSchema,
+    ...expenseFields,
+  })
+  .refine(requireCardForCardPayment.check, requireCardForCardPayment.params)
+  .transform(normaliseCardId);
 
 export const expenseDeleteSchema = z.object({
   id: objectIdSchema,
@@ -162,12 +195,17 @@ export const expenseQuerySchema = z
     limit: boundedIntSchema(1, MAX_PAGE_SIZE).optional(),
     from: dateSchema.optional(),
     to: dateSchema.optional(),
+    mode: z.enum(EXPENSE_MODES).optional(),
+    cardId: objectIdSchema.optional(),
   })
   .transform((query) => ({
     page: query.page ?? 1,
     limit: query.limit ?? DEFAULT_PAGE_SIZE,
     from: query.from ?? null,
     to: query.to ?? null,
+    // A specific card only narrows card payments, so it implies mode=card.
+    mode: query.cardId ? ("card" as const) : (query.mode ?? null),
+    cardId: query.cardId ?? null,
   }))
   .refine((query) => !query.from || !query.to || query.from <= query.to, {
     message: "`from` must not be after `to`",
@@ -176,7 +214,7 @@ export const expenseQuerySchema = z
 export type ExpenseQuery = z.infer<typeof expenseQuerySchema>;
 
 /** The only query keys the read path understands; anything else is ignored. */
-const EXPENSE_QUERY_KEYS = ["page", "limit", "from", "to"] as const;
+const EXPENSE_QUERY_KEYS = ["page", "limit", "from", "to", "mode", "cardId"] as const;
 
 /**
  * Pull the recognised query parameters off a request URL and validate them.
@@ -201,9 +239,49 @@ export const currencyUpdateSchema = z.object({
   currency: z.enum(SUPPORTED_CURRENCIES),
 });
 
+/**
+ * Saved cards. The schema is the reason no sensitive card data can be stored:
+ * it accepts exactly a type, a nickname and four digits, and strips every
+ * other key (a full number, CVV, PIN, OTP or expiry sent by a client is
+ * silently discarded, never persisted).
+ */
+const cardNameSchema = z
+  .string()
+  .trim()
+  .min(1, { message: "is required" })
+  .max(CARD_NAME_MAX_LENGTH, {
+    message: `must be at most ${CARD_NAME_MAX_LENGTH} characters`,
+  })
+  // A nickname has no business holding a card number. Reject long digit runs
+  // (spaces/dashes ignored) so a user cannot paste one in by mistake.
+  .refine((value) => !/[0-9]{7}/.test(value.replace(/[\s-]/g, "")), {
+    message: "must not contain a card number",
+  });
+
+const cardFields = {
+  type: z.enum(CARD_TYPES),
+  name: cardNameSchema,
+  last4: z
+    .string()
+    .trim()
+    .regex(/^[0-9]{4}$/, { message: "must be exactly 4 digits" }),
+};
+
+export const cardCreateSchema = z.object(cardFields);
+
+export const cardUpdateSchema = z.object({
+  id: objectIdSchema,
+  ...cardFields,
+});
+
+export const cardDeleteSchema = z.object({
+  id: objectIdSchema,
+});
+
 export type ExpenseCreateInput = z.infer<typeof expenseCreateSchema>;
 export type ExpenseUpdateInput = z.infer<typeof expenseUpdateSchema>;
 export type ExpenseDeleteInput = z.infer<typeof expenseDeleteSchema>;
+export type CardCreateInput = z.infer<typeof cardCreateSchema>;
 
 /** An error that maps to a specific HTTP status with a client-safe message. */
 export class HttpError extends Error {

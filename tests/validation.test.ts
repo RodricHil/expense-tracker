@@ -7,6 +7,8 @@ import {
   expenseDeleteSchema,
   expenseQuerySchema,
   expenseUpdateSchema,
+  cardCreateSchema,
+  cardUpdateSchema,
   parseExpenseQuery,
 } from "@/lib/validation";
 
@@ -122,6 +124,7 @@ describe("expenseCreateSchema", () => {
 
     expect(Object.keys(parsed).sort()).toEqual([
       "amount",
+      "cardId",
       "date",
       "description",
       "mode",
@@ -184,6 +187,8 @@ describe("expenseQuerySchema (§G.4)", () => {
       limit: DEFAULT_PAGE_SIZE,
       from: null,
       to: null,
+      mode: null,
+      cardId: null,
     });
   });
 
@@ -248,6 +253,8 @@ describe("parseExpenseQuery", () => {
       limit: DEFAULT_PAGE_SIZE,
       from: null,
       to: null,
+      mode: null,
+      cardId: null,
     });
   });
 
@@ -262,5 +269,117 @@ describe("parseExpenseQuery", () => {
     expect(() =>
       parseExpenseQuery("https://example.test/api/expenses?limit=99999999")
     ).toThrow(ZodError);
+  });
+});
+
+describe("payment methods and card references", () => {
+  const CARD_ID = "65a1b2c3d4e5f60718293a4b";
+
+  it.each(["online", "card", "cash"])("accepts %s as a payment method", (mode) => {
+    const cardId = mode === "card" ? CARD_ID : undefined;
+    expect(expenseCreateSchema.safeParse({ ...validExpense, mode, cardId }).success).toBe(true);
+  });
+
+  it("keeps the card reference on a card payment", () => {
+    const parsed = expenseCreateSchema.parse({ ...validExpense, mode: "card", cardId: CARD_ID });
+    expect(parsed.cardId).toBe(CARD_ID);
+  });
+
+  it.each([undefined, null])("requires a saved card for a card payment (cardId %s)", (cardId) => {
+    const result = expenseCreateSchema.safeParse({ ...validExpense, mode: "card", cardId });
+    expect(result.success).toBe(false);
+    expect(issuePaths(result.error)).toContain("cardId");
+  });
+
+  it("requires a saved card on update too", () => {
+    const result = expenseUpdateSchema.safeParse({ ...validExpense, id: VALID_ID, mode: "card" });
+    expect(result.success).toBe(false);
+    expect(issuePaths(result.error)).toContain("cardId");
+  });
+
+  it.each(["online", "cash"])("drops a stale card reference on a %s payment", (mode) => {
+    const parsed = expenseCreateSchema.parse({ ...validExpense, mode, cardId: CARD_ID });
+    expect(parsed.cardId).toBeNull();
+  });
+
+  it("rejects a card reference that is not an ObjectId, including operator objects", () => {
+    expect(expenseCreateSchema.safeParse({ ...validExpense, mode: "card", cardId: "4111111111111111" }).success).toBe(false);
+    expect(expenseCreateSchema.safeParse({ ...validExpense, mode: "card", cardId: { $ne: null } }).success).toBe(false);
+  });
+
+  it("applies the same rules on update", () => {
+    const parsed = expenseUpdateSchema.parse({ ...validExpense, id: VALID_ID, mode: "online", cardId: CARD_ID });
+    expect(parsed.cardId).toBeNull();
+  });
+});
+
+describe("card schemas — no sensitive card data", () => {
+  const validCard = { type: "credit", name: "HDFC Credit", last4: "4582" };
+
+  it("accepts a type, nickname and last four digits", () => {
+    expect(cardCreateSchema.parse(validCard)).toEqual(validCard);
+  });
+
+  it("strips a full number, CVV, PIN, OTP and expiry instead of passing them through", () => {
+    const parsed = cardCreateSchema.parse({
+      ...validCard,
+      number: "4111111111114582",
+      cvv: "123",
+      pin: "0000",
+      otp: "123456",
+      expiry: "12/30",
+      userId: "someone-else",
+    });
+    expect(Object.keys(parsed).sort()).toEqual(["last4", "name", "type"]);
+  });
+
+  it.each(["458", "45821", "45a2", "", "4111111111114582"])("rejects %j as the last four digits", (last4) => {
+    const result = cardCreateSchema.safeParse({ ...validCard, last4 });
+    expect(result.success).toBe(false);
+    expect(issuePaths(result.error)).toContain("last4");
+  });
+
+  it("rejects a type other than debit or credit", () => {
+    expect(cardCreateSchema.safeParse({ ...validCard, type: "prepaid" }).success).toBe(false);
+  });
+
+  it("rejects an empty or overlong nickname", () => {
+    expect(cardCreateSchema.safeParse({ ...validCard, name: "   " }).success).toBe(false);
+    expect(cardCreateSchema.safeParse({ ...validCard, name: "x".repeat(41) }).success).toBe(false);
+  });
+
+  it("rejects a nickname that contains a card number", () => {
+    const result = cardCreateSchema.safeParse({ ...validCard, name: "My card 4111 1111 1111 1111" });
+    expect(result.success).toBe(false);
+    expect(issuePaths(result.error)).toContain("name");
+  });
+
+  it("requires a valid id on update", () => {
+    expect(cardUpdateSchema.safeParse({ ...validCard, id: { $ne: null } }).success).toBe(false);
+    expect(cardUpdateSchema.safeParse({ ...validCard, id: VALID_ID }).success).toBe(true);
+  });
+});
+
+describe("payment filter query parameters", () => {
+  const CARD_ID = "65a1b2c3d4e5f60718293a4b";
+  const parse = (qs: string) => parseExpenseQuery(`https://example.test/api/expenses?${qs}`);
+
+  it("defaults to no payment filter", () => {
+    expect(parse("")).toMatchObject({ mode: null, cardId: null });
+  });
+
+  it.each(["online", "card", "cash"])("accepts mode=%s", (mode) => {
+    expect(parse(`mode=${mode}`)).toMatchObject({ mode, cardId: null });
+  });
+
+  it("treats a card filter as a card-payment filter", () => {
+    expect(parse(`cardId=${CARD_ID}`)).toMatchObject({ mode: "card", cardId: CARD_ID });
+    expect(parse(`mode=cash&cardId=${CARD_ID}`)).toMatchObject({ mode: "card", cardId: CARD_ID });
+  });
+
+  it("rejects an unknown mode or a malformed card id", () => {
+    expect(() => parse("mode=crypto")).toThrow();
+    expect(() => parse("cardId=4111111111111111")).toThrow();
+    expect(() => parse("cardId[$ne]=x&cardId=%7B%7D")).toThrow();
   });
 });

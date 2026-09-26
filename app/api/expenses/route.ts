@@ -4,7 +4,9 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import Expense from "@/models/Expense";
 import { loadExpensePage, ownerFilter, ownerId } from "@/lib/expenses";
+import { ownsCard } from "@/lib/cards";
 import {
+  HttpError,
   expenseCreateSchema,
   expenseDeleteSchema,
   expenseUpdateSchema,
@@ -23,9 +25,23 @@ import {
  * ownership after a fetch. That is the §E "no IDOR" positive control, and
  * tests/expenses-route.test.ts is its regression gate.
  *
+ * A card payment may reference one of the caller's saved cards by id. The id
+ * is checked against the caller's own cards before the write, so an expense
+ * can never point at somebody else's card.
+ *
  * The read query itself lives in `lib/expenses.ts` because the dashboard and
  * analytics server components run the same one directly (§G.3).
  */
+
+/** 400 unless `cardId` is absent or one of the caller's own saved cards. */
+async function assertOwnCard(
+  session: Parameters<typeof ownsCard>[0],
+  cardId: string | null
+): Promise<void> {
+  if (cardId && !(await ownsCard(session, cardId))) {
+    throw new HttpError(400, "Selected card was not found");
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -38,10 +54,11 @@ export async function POST(req: Request) {
     // Validate before touching the database. Unknown keys (_id, createdAt,
     // updatedAt, userId, ...) are dropped by the schema, and the fields below
     // are destructured explicitly — the request body is never spread.
-    const { date, description, quantity, mode, type, amount } =
+    const { date, description, quantity, mode, type, amount, cardId } =
       expenseCreateSchema.parse(await parseJsonBody(req));
 
     await connectDB();
+    await assertOwnCard(session, cardId);
 
     const expense = await Expense.create({
       // Stable id: new rows never carry an email as their owner key.
@@ -50,6 +67,7 @@ export async function POST(req: Request) {
       description,
       quantity: quantity ?? null,
       mode,
+      cardId,
       type,
       amount: mongoose.Types.Decimal128.fromString(amount),
     });
@@ -134,10 +152,11 @@ export async function PUT(req: Request) {
       return unauthorized();
     }
 
-    const { id, date, description, quantity, mode, type, amount } =
+    const { id, date, description, quantity, mode, type, amount, cardId } =
       expenseUpdateSchema.parse(await parseJsonBody(req));
 
     await connectDB();
+    await assertOwnCard(session, cardId);
 
     const updatedExpense = await Expense.findOneAndUpdate(
       {
@@ -149,6 +168,7 @@ export async function PUT(req: Request) {
         description,
         quantity: quantity ?? null,
         mode,
+        cardId,
         type,
         amount: mongoose.Types.Decimal128.fromString(amount),
       },

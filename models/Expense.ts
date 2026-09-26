@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { PAYMENT_METHODS } from "@/lib/payment";
 
 const ExpenseSchema = new mongoose.Schema(
   {
@@ -28,7 +29,17 @@ const ExpenseSchema = new mongoose.Schema(
     mode: {
       type: String,
       required: true,
-      enum: ["online", "cash"],
+      enum: PAYMENT_METHODS,
+    },
+
+    /**
+     * The saved card used when `mode` is "card". Only the card's id is stored;
+     * its nickname and last four digits live on the Card document. Null for
+     * online/cash payments, or when the card has since been deleted.
+     */
+    cardId: {
+      type: String,
+      default: null,
     },
 
     type: {

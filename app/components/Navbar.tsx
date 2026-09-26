@@ -6,15 +6,18 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useCurrency } from "@/app/components/CurrencyProvider";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBars, faXmark, faChevronDown, faUser } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRightFromBracket, faBars, faChartColumn, faChevronDown, faGear, faPlus, faReceipt, faRightToBracket, faXmark } from "@fortawesome/free-solid-svg-icons";
 import ConfirmationModal from "./ConfirmationModal";
 import CustomSelect from "./CustomSelect";
 import ThemeControl from "./ThemeControl";
 import Brand from "./Brand";
+import Avatar from "./Avatar";
+import Skeleton from "./Skeleton";
 
 const navLinks = [
-  { href: "/dashboard", label: "Expenses" },
-  { href: "/analytics", label: "Analytics" },
+  { href: "/dashboard", label: "Expenses", icon: faReceipt },
+  { href: "/analytics", label: "Analytics", icon: faChartColumn },
+  { href: "/settings", label: "Settings", icon: faGear },
 ];
 
 export default function Navbar() {
@@ -22,11 +25,13 @@ export default function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const { data: session } = useSession();
-  const { currency, options, setCurrency, loading } = useCurrency();
+  const { data: session, status } = useSession();
+  const { currency, options, setCurrency, loading: currencyLoading } = useCurrency();
   const pathname = usePathname();
   const profile = useRef<HTMLDivElement>(null);
   const profileButton = useRef<HTMLButtonElement>(null);
+  const user = session?.user;
+  const firstName = user?.name?.split(" ")[0] || "Account";
 
   useEffect(() => {
     const dismiss = (event: PointerEvent) => {
@@ -53,42 +58,68 @@ export default function Navbar() {
     finally { setIsLoggingOut(false); }
   };
 
-  const currencySelect = (id: string) => (
-    <CustomSelect id={id} label="Display currency" value={currency} onChange={(value) => void setCurrency(value)} disabled={!session || loading} options={options.map((option) => ({ value: option.symbol, label: `${option.symbol} ${option.label}` }))} />
-  );
+  const isCurrent = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+
+  /** Hidden while the saved preference loads, so ₹ never flashes before $. */
+  const currencySelect = (id: string, width?: number) => currencyLoading
+    ? <Skeleton width={width ?? "100%"} height={46} />
+    : <CustomSelect id={id} label="Display currency" value={currency} onChange={(value) => void setCurrency(value)} disabled={!session} options={options.map((option) => ({ value: option.symbol, label: `${option.symbol} ${option.label}` }))} />;
+
+  /**
+   * Three explicit states. "loading" renders a placeholder the same size as
+   * the signed-in control, so nothing jumps when the session resolves and
+   * "Sign in" is never shown to somebody who is signed in.
+   */
+  let account: React.ReactNode;
+  if (status === "loading") {
+    account = <span className="account-button" aria-hidden="true" style={{ borderColor: "var(--border)" }}>
+      <Skeleton width={32} height={32} />
+      <Skeleton width={56} className="skeleton-text hidden sm:block" />
+      <FontAwesomeIcon icon={faChevronDown} className="chevron hidden sm:block" />
+    </span>;
+  } else if (status === "authenticated" && user) {
+    account = <div ref={profile} className="relative">
+      <button ref={profileButton} type="button" className="account-button" aria-label={`Account menu for ${user.name ?? user.email ?? "you"}`} aria-expanded={profileOpen} aria-controls="account-panel" onClick={() => setProfileOpen(!profileOpen)}>
+        <Avatar src={user.image} name={user.name} email={user.email} />
+        <span className="account-name hidden sm:inline">{firstName}</span>
+        <FontAwesomeIcon icon={faChevronDown} className="chevron hidden sm:block" />
+      </button>
+      {profileOpen && <div id="account-panel" className="profile-menu">
+        <div className="profile-summary">
+          <Avatar src={user.image} name={user.name} email={user.email} size={40} />
+          <div className="min-w-0">
+            <p className="font-semibold truncate">{user.name}</p>
+            <p className="muted text-xs truncate">{user.email}</p>
+          </div>
+        </div>
+        <Link href="/settings" className="menu-item" onClick={() => setProfileOpen(false)}><FontAwesomeIcon icon={faGear} />Settings</Link>
+        <button type="button" className="menu-item" onClick={() => { setProfileOpen(false); setShowLogoutConfirm(true); }}><FontAwesomeIcon icon={faArrowRightFromBracket} />Sign out</button>
+      </div>}
+    </div>;
+  } else {
+    account = <Link className="btn btn-primary" href="/login"><FontAwesomeIcon icon={faRightToBracket} />Sign in</Link>;
+  }
 
   return (
     <header className="app-header">
       <div className="nav-inner">
-        <Link href="/dashboard" aria-label="Finex home"><Brand /></Link>
-        <nav aria-label="Main navigation" className="hidden md:flex items-center gap-2 mr-auto ml-8">
-          {navLinks.map((item) => <Link key={item.href} href={item.href} className="nav-link" aria-current={pathname === item.href ? "page" : undefined}>{item.label}</Link>)}
+        <Link href="/dashboard" aria-label="Finex home" className="shrink-0"><Brand /></Link>
+        <nav aria-label="Main navigation" className="hidden md:flex items-center gap-1 mr-auto ml-4 lg:ml-8">
+          {navLinks.map((item) => <Link key={item.href} href={item.href} className="nav-link" aria-current={isCurrent(item.href) ? "page" : undefined}><FontAwesomeIcon icon={item.icon} aria-hidden="true" />{item.label}</Link>)}
         </nav>
-        <div className="flex items-center gap-3">
+        <div className="header-actions">
           <ThemeControl />
-          <div className="hidden md:block">{currencySelect("currency-select")}</div>
-          {session ? (
-            <div ref={profile} className="relative">
-              <button ref={profileButton} type="button" className="btn" aria-label="Account" aria-expanded={profileOpen} aria-controls="account-panel" onClick={() => setProfileOpen(!profileOpen)}>
-                <span className="hidden sm:inline">{session.user?.name?.split(" ")[0] || "Account"}</span><FontAwesomeIcon icon={faUser} className="w-4 h-4 sm:hidden" />
-                <FontAwesomeIcon icon={faChevronDown} className="w-3 h-3 hidden sm:block" />
-              </button>
-              {profileOpen && <div id="account-panel" className="profile-menu">
-                <p className="font-medium truncate">{session.user?.name}</p>
-                <p className="muted text-xs truncate mt-1">{session.user?.email}</p>
-                <button type="button" className="btn w-full mt-4" onClick={() => { setProfileOpen(false); setShowLogoutConfirm(true); }}>Sign out</button>
-              </div>}
-            </div>
-          ) : <Link className="btn btn-primary" href="/login">Sign in</Link>}
+          {status !== "unauthenticated" && <div className="hidden lg:block" style={{ width: 132 }}>{currencySelect("currency-select", 132)}</div>}
+          {account}
           <button type="button" className="btn btn-icon md:hidden" aria-label={open ? "Close navigation" : "Open navigation"} aria-expanded={open} aria-controls="mobile-navigation" onClick={() => setOpen(!open)}>
             <FontAwesomeIcon icon={open ? faXmark : faBars} className="w-4 h-4" />
           </button>
         </div>
       </div>
-      {open && <nav id="mobile-navigation" aria-label="Mobile navigation" className="md:hidden border-t border-stone-800 p-4 grid gap-3">
-        {navLinks.map((item) => <Link key={item.href} href={item.href} className="nav-link" aria-current={pathname === item.href ? "page" : undefined} onClick={() => setOpen(false)}>{item.label}</Link>)}
-        <Link href="/add-expenses" className="btn btn-primary" onClick={() => setOpen(false)}>Add expense</Link>
-        {currencySelect("mobile-currency-select")}
+      {open && <nav id="mobile-navigation" aria-label="Mobile navigation" className="mobile-nav md:hidden">
+        {navLinks.map((item) => <Link key={item.href} href={item.href} className="nav-link" aria-current={isCurrent(item.href) ? "page" : undefined} onClick={() => setOpen(false)}><FontAwesomeIcon icon={item.icon} aria-hidden="true" />{item.label}</Link>)}
+        <Link href="/add-expenses" className="btn btn-primary" onClick={() => setOpen(false)}><FontAwesomeIcon icon={faPlus} />Add expense</Link>
+        {status === "authenticated" && <div className="field"><span>Display currency</span>{currencySelect("mobile-currency-select")}</div>}
       </nav>}
       {showLogoutConfirm && <ConfirmationModal title="Sign out?" message="You can sign back in with Google anytime." confirmText="Sign out" cancelText="Cancel" isLoading={isLoggingOut} onConfirm={handleLogout} onCancel={() => setShowLogoutConfirm(false)} />}
     </header>

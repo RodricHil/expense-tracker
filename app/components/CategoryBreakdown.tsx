@@ -13,7 +13,7 @@ export default function CategoryBreakdown({ categories, total, currency, limit =
         const share = total > 0 ? amount / total * 100 : 0;
         return <div key={type} className="rank-row">
           <div className="rank-label"><span>{type}</span><span className="money">{currency} {formatAmount(amount)}</span></div>
-          <div className="flex items-center gap-3"><div className="progress-track flex-1" aria-hidden="true"><div className="progress-fill" style={{ width: `${Math.min(share, 100)}%` }} /></div><span className="muted text-xs w-12 text-right">{share.toFixed(1)}%</span></div>
+          <div className="flex items-center gap-3"><div className="progress-track flex-1" aria-hidden="true"><div className="progress-fill" style={{ width: `${Math.min(share, 100)}%` }} /></div><span className="muted text-xs w-14 text-right tabular-nums">{share.toFixed(1)}%</span></div>
         </div>;
       })}
     </div>

@@ -2,6 +2,7 @@ import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { DEFAULT_CURRENCY, getPreferredCurrency } from "@/lib/preferences";
 import {
   currencyUpdateSchema,
   handleRouteError,
@@ -10,8 +11,6 @@ import {
   unauthorized,
 } from "@/lib/validation";
 
-const DEFAULT_CURRENCY = "₹";
-
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -19,16 +18,13 @@ export async function GET() {
       return unauthorized();
     }
 
-    await connectDB();
-    const user = await User.findOne({ email: session.user.email }).lean();
+    const currency = await getPreferredCurrency(session.user.email);
 
-    if (!user) {
+    if (!currency) {
       return notFound();
     }
 
-    return Response.json({
-      currency: user.preferredCurrency || DEFAULT_CURRENCY,
-    });
+    return Response.json({ currency });
   } catch (error) {
     return handleRouteError(error);
   }

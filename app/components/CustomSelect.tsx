@@ -4,7 +4,7 @@ import { popoverPosition } from "@/lib/popover";
 import { useEffect, useId, useRef, useState } from "react";
 
 type Option = { value: string; label: string };
-export default function CustomSelect({ value, options, onChange, label, disabled = false, id }: { value: string; options: Option[]; onChange: (value: string) => void; label: string; disabled?: boolean; id?: string }) {
+export default function CustomSelect({ value, options, onChange, label, disabled = false, id, placeholder = "Select", invalid = false, describedBy }: { value: string; options: Option[]; onChange: (value: string) => void; label: string; disabled?: boolean; id?: string; placeholder?: string; invalid?: boolean; describedBy?: string }) {
   const generatedId = useId();
   const controlId = id ?? generatedId;
   const [position, setPosition] = useState<React.CSSProperties>({});
@@ -53,8 +53,8 @@ export default function CustomSelect({ value, options, onChange, label, disabled
   };
 
   return <div ref={root} className="custom-control" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}>
-    <button ref={trigger} id={controlId} type="button" className="input select-trigger" aria-label={label} aria-haspopup="listbox" aria-expanded={open} aria-controls={`${controlId}-list`} disabled={disabled} onClick={() => open ? setOpen(false) : show()} onKeyDown={(event) => { if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) { event.preventDefault(); show(); } }}>
-      <span className="truncate">{options[selected]?.label ?? "Select"}</span><svg className="select-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+    <button ref={trigger} id={controlId} type="button" className="input select-trigger" aria-label={label} aria-haspopup="listbox" aria-expanded={open} aria-controls={`${controlId}-list`} data-invalid={invalid || undefined} aria-describedby={describedBy} data-placeholder={selected < 0} disabled={disabled} onClick={() => open ? setOpen(false) : show()} onKeyDown={(event) => { if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) { event.preventDefault(); show(); } }}>
+      <span className="truncate">{options[selected]?.label ?? placeholder}</span><svg className="select-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
     </button>
     {open && <div ref={list} id={`${controlId}-list`} className="select-options" style={position} role="listbox" tabIndex={0} aria-label={label} aria-activedescendant={`${controlId}-option-${active}`} onKeyDown={keyboard}>
       {options.map((option, index) => <div key={option.value} id={`${controlId}-option-${index}`} role="option" aria-selected={value === option.value} data-active={index === active} className="select-option" onPointerMove={() => setActive(index)} onClick={() => choose(index)}><span>{option.label}</span>{value === option.value && <span aria-hidden="true">✓</span>}</div>)}

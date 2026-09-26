@@ -1,5 +1,7 @@
 import { Metadata } from "next";
-import HomeRedirect from "./HomeRedirect";
+import { redirect, unstable_rethrow } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Home | Expense Tracker",
@@ -22,6 +24,18 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Page() {
-  return <HomeRedirect />;
+/**
+ * Redirect on the server. The old client-side redirect rendered an
+ * "Opening Finex…" page and waited for the session to load in the browser
+ * before navigating, which was a visible blank step on every visit.
+ */
+export default async function Page() {
+  let signedIn = false;
+  try {
+    signedIn = Boolean(await getServerSession(authOptions));
+  } catch (error) {
+    unstable_rethrow(error);
+    // Treat an unreadable session as signed out; /login handles the rest.
+  }
+  redirect(signedIn ? "/dashboard" : "/login");
 }
