@@ -31,11 +31,11 @@ export default function LoginClient({ hasAuthError = false }: { hasAuthError?: b
 
   return (
     <main className="login-shell">
-      <header className="login-header"><Brand /><div className="flex items-center gap-5"><span className="muted text-xs hidden sm:inline">Personal expense tracker</span><ThemeControl /></div></header>
+      <header className="login-header"><Brand /><div className="flex items-center gap-5"><span className="muted text-sm hidden sm:inline">Personal Expense Tracker</span><ThemeControl /></div></header>
       <div className="login-content">
         <section className="login-intro" aria-labelledby="login-title">
           <h1 id="login-title">A clearer view of your spending.</h1>
-          <p className="muted login-description">Track everyday expenses. Understand the bigger picture.</p>
+          <p className="muted login-description text-base">Track everyday expenses. Understand the bigger picture.</p>
           <div className="login-preview" aria-label="Example expense overview">
             <div className="preview-heading"><span>Spending overview</span><span className="badge">Example</span></div>
             <div className="preview-total"><span className="muted text-xs">This month</span><p className="money">₹ 12,450.00</p></div>
