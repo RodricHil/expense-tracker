@@ -17,8 +17,8 @@ interface FormInputProps {
 const FormInput: React.FC<FormInputProps> = ({ label, id, name, type, value, onChange, error,placeholder, required = false }) => {
     return (
         <div>
-            <label htmlFor={id} className="block mb-2 font-medium text-white text-left">
-                {label} {required && <span className="text-red-500">*</span>}
+            <label htmlFor={id} className="block mb-2 font-medium text-[var(--text)] text-left">
+                {label} {required && <span className="text-red-300">*</span>}
             </label>
             {type === 'textarea' ? (
                 <textarea
@@ -27,7 +27,7 @@ const FormInput: React.FC<FormInputProps> = ({ label, id, name, type, value, onC
                     value={value}
                     onChange={onChange}
                     placeholder={placeholder}
-                    className={`border rounded p-2 text-white w-full ${error ? 'border-red-500' : 'border-gray-300'} outline-none`}
+                    className={`border rounded-none p-2 text-[var(--text)] w-full ${error ? 'border-red-500' : 'border-stone-300'} outline-none`}
                 />
             ) : (
                 <input
@@ -37,10 +37,10 @@ const FormInput: React.FC<FormInputProps> = ({ label, id, name, type, value, onC
                     value={value}
                     placeholder={placeholder}
                     onChange={onChange}
-                    className={`border rounded p-2 w-full text-white ${error ? 'border-red-500' : 'border-gray-300'} outline-none`}
+                    className={`border rounded-none p-2 w-full text-[var(--text)] ${error ? 'border-red-500' : 'border-stone-300'} outline-none`}
                 />
             )}
-            {error && <p className="text-red-500 text-left mt-1 text-xs md:text-sm">{error}</p>}
+            {error && <p className="text-red-300 text-left mt-1 text-xs">{error}</p>}
         </div>
     );
 };

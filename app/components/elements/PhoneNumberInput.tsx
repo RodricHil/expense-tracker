@@ -126,8 +126,8 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({
 
   return (
     <div>
-      <label htmlFor={id} className="block mb-2 font-medium text-white text-left">
-        {label} {required && <span className="text-red-500">*</span>}
+      <label htmlFor={id} className="block mb-2 font-medium text-[var(--text)] text-left">
+        {label} {required && <span className="text-red-300">*</span>}
       </label>
 
       <div className="relative flex w-full">
@@ -135,8 +135,8 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({
         <button
           type="button"
           onClick={() => setIsModalOpen(true)}
-          className={`flex items-center gap-2 px-3 py-2 cursor-pointer border rounded-l-md bg-white text-black
-            ${error ? "border-red-500" : "border-gray-300"}`}
+          className={`flex items-center gap-2 px-3 py-2 cursor-pointer border rounded-none bg-[var(--surface)] text-[var(--text)]
+            ${error ? "border-red-500" : "border-stone-300"}`}
         >
           {selectedCountry?.flag && (
             <Image
@@ -161,7 +161,7 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({
 
           <FontAwesomeIcon
             icon={faChevronDown}
-            className="w-3 h-3 text-gray-500"
+            className="w-3 h-3 text-stone-500"
           />
         </button>
 
@@ -175,13 +175,13 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({
           value={value}
           onChange={handleInputChange}
           placeholder={placeholder}
-          className={`flex-1 px-3 py-2 border border-l-0 rounded-r-md text-white w-full
-            ${error ? "border-red-500" : "border-gray-300"} 
+          className={`flex-1 px-3 py-2 border border-l-0 rounded-none text-[var(--text)] w-full
+            ${error ? "border-red-500" : "border-stone-300"}
             focus:outline-none outline-none`}
         />
       </div>
 
-      {error && <p className="text-red-500 mt-1 text-xs md:text-sm text-left">{error}</p>}
+      {error && <p className="text-red-300 mt-1 text-xs text-left">{error}</p>}
 
       {/* Modal */}
       {isModalOpen && (
@@ -191,26 +191,26 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({
             onClick={() => setIsModalOpen(false)}
           />
 
-          <div className="relative bg-white rounded-lg p-4 w-[90%] sm:w-96 z-10">
+          <div className="relative bg-[var(--surface)] rounded-none p-4 w-[90%] sm:w-96 z-10">
             <button
               className="absolute top-3 right-3"
               onClick={() => setIsModalOpen(false)}
             >
-              <FontAwesomeIcon icon={faTimes}  className="text-black"/>
+              <FontAwesomeIcon icon={faTimes}  className="text-[var(--text)]"/>
             </button>
 
-            <h2 className="text-lg font-semibold mb-3 text-black">
+            <h2 className="text-lg font-semibold mb-3 text-[var(--text)]">
               Select Country Code
             </h2>
 
-            <div className="flex items-center border rounded-md px-3 py-2 gap-2 mb-4">
-              <FontAwesomeIcon icon={faSearch} className="text-gray-500 w-4" />
+            <div className="flex items-center border rounded-none px-3 py-2 gap-2 mb-4">
+              <FontAwesomeIcon icon={faSearch} className="text-stone-500 w-4" />
               <input
                 type="text"
                 placeholder="Search country or code"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full outline-none text-black "
+                className="w-full outline-none text-[var(--text)] "
               />
             </div>
 
@@ -219,7 +219,7 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({
                 <div
                   key={`${c.code}-${c.country}`}
                   onClick={() => handleCountrySelect(c)}
-                  className="flex items-center p-2 hover:bg-gray-200 cursor-pointer"
+                  className="flex items-center p-2 hover:bg-stone-200 cursor-pointer"
                 >
                   <Image
                     src={c.flag}
@@ -229,8 +229,8 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({
                     className="mr-2"
                     unoptimized
                   />
-                  <span className="font-medium text-black">{c.code}</span>
-                  <span className="ml-2 text-sm truncate text-black">
+                  <span className="font-medium text-[var(--text)]">{c.code}</span>
+                  <span className="ml-2 text-sm truncate text-[var(--text)]">
                     {c.country}
                   </span>
                 </div>

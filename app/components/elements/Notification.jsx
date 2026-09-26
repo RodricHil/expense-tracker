@@ -1,71 +1,15 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect } from "react";
 
-const Notification = ({ message, type, onClose }) => {
-  const [show, setShow] = useState(true);
-
+export default function Notification({ message, type, onClose }) {
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShow(false);
-      if (typeof onClose === "function") onClose();
-    }, 4000);
-
+    const timer = setTimeout(onClose, 5000);
     return () => clearTimeout(timer);
-  }, [onClose]);
-
-
-  if (!show) return null;
-
-  const isSuccess = type === "success";
-
-  return (
-    <div className="flex justify-center">
-      <AnimatePresence>
-        {show && (
-          <motion.div
-            initial={{ opacity: 0, y: -40 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -120 }}
-            transition={{ duration: 0.45, ease: "easeInOut" }}
-            className={`fixed top-20 z-50 flex items-center gap-4 
-               w-[90%] md:w-auto 
-              rounded-sm border shadow-lg px-3 py-3
-              ${isSuccess ? "bg-green-50 border-green-500" : "bg-red-50 border-red-500"}
-            `}
-          >
-            {/* Icon Circle */}
-            <div
-              className={`flex items-center justify-center shrink-0 
-                w-10 h-10 rounded-full
-                ${isSuccess ? "bg-green-600" : "bg-red-600"}
-              `}
-            >
-              <FontAwesomeIcon
-                icon={isSuccess ? faCheck : faTimes}
-                className="text-white text-lg"
-              />
-            </div>
-
-            {/* Message */}
-            <div className="flex-1 text-sm md:text-base font-medium text-gray-800">
-              {/*
-                ET-M3: rendered as text, never as HTML. React escapes `message`,
-                so a value such as `<img src=x onerror=alert(1)>` shows up as
-                literal characters. Do not reintroduce dangerouslySetInnerHTML
-                here — every caller passes a plain string.
-              */}
-              <span>{message}</span>
-            </div>
-
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
-export default Notification;
+  }, [message, type, onClose]);
+  return <div className="fixed bottom-6 left-4 right-4 md:left-auto md:right-6 z-[70] panel flex items-center gap-4 max-w-lg" role={type === "error" ? "alert" : "status"}>
+    <span className={type === "error" ? "text-red-300" : "text-brand"} aria-hidden="true">{type === "error" ? "!" : "✓"}</span>
+    <p className="flex-1">{message}</p>
+    <button type="button" className="btn btn-icon" aria-label="Dismiss notification" onClick={onClose}>×</button>
+  </div>;
+}

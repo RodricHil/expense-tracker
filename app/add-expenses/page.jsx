@@ -1,17 +1,17 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import AddExpense from "./addexpense";
 
 export const metadata = {
-  title: "Add Expense | Expense Tracker",
+  title: "Add Expense | Finex",
   description: "Add a new expense to your tracker and categorize it for better financial management",
   alternates: {
     canonical: "https://finex-tracker.vercel.app/add-expenses",
   },
   keywords: ["add expense", "track spending", "expense entry", "budget tracking"],
   openGraph: {
-    title: "Add New Expense | Expense Tracker",
+    title: "Add New Expense | Finex",
     description: "Add a new expense to your tracker and categorize it for better financial management",
     url: "https://finex-tracker.vercel.app/add-expenses",
     type: "website",

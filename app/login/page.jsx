@@ -1,12 +1,13 @@
 import LoginClient from "./logintclient"
 
 export const metadata = {
-  title: "Login | Expense Tracker",
+  title: "Login | Finex",
   description: "Sign in to your Expense Tracker account",
 };
 
-export default function LoginPage() {
+export default async function LoginPage({ searchParams }) {
+    const params = await searchParams;
     return (
-        <LoginClient />
+        <LoginClient hasAuthError={Boolean(params?.error)} />
     );
 }

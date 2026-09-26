@@ -1,44 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useSyncExternalStore, useState } from "react";
+import { localDateKey } from "@/lib/format";
 import { useRouter } from "next/navigation";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faArrowLeft,
-  faCheck,
-  faSpinner,
-  faChevronDown,
-} from "@fortawesome/free-solid-svg-icons";
 import Link from "next/link";
+import ExpenseFields from "@/app/components/ExpenseFields";
 import Navbar from "@/app/components/Navbar";
 import { useNotification } from "@/app/components/elements/NotificationProvider";
 import { useCurrency } from "@/app/components/CurrencyProvider";
 
-const categories = [
-  "food",
-  "electronics",
-  "dress",
-  "service",
-  "gardening",
-  "furniture",
-  "house utility",
-  "footwear",
-  "makeup/grooming",
-  "subscriptions",
-  "toy/figures/stationary",
-  "travel expenses",
-  "gifts",
-  "medicines",
-  "harmful item",
-  "investment",
-  "bills",
-  "repair",
-  "vehicle expenses",
-  "decoration",
-  "others",
-];
+
+
+const subscribeToDate = (notify: () => void) => {
+  const timer = window.setInterval(notify, 30_000);
+  return () => window.clearInterval(timer);
+};
+const serverDate = () => "";
 
 export default function AddExpense() {
+  const today = useSyncExternalStore(subscribeToDate, localDateKey, serverDate);
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [amountError, setAmountError] = useState("");
@@ -46,7 +26,7 @@ export default function AddExpense() {
   const { currency } = useCurrency();
 
   const [form, setForm] = useState({
-    date: new Date().toISOString().split("T")[0],
+    date: null as string | null,
     description: "",
     quantity: "",
     mode: "online",
@@ -55,7 +35,7 @@ export default function AddExpense() {
   });
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: { target: { name: string; value: string } }
   ) => {
     const { name, value } = e.target;
 
@@ -79,8 +59,8 @@ export default function AddExpense() {
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!form.amount) {
-      setAmountError("Amount is required");
+    if (!form.amount || Number(form.amount) <= 0) {
+      setAmountError("Enter an amount greater than zero.");
       return;
     }
 
@@ -92,6 +72,7 @@ export default function AddExpense() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          date: form.date ?? today,
           quantity: form.quantity ? Number(form.quantity) : null,
           amount: Number(form.amount),
         }),
@@ -103,193 +84,25 @@ export default function AddExpense() {
       } else {
         showNotification("Failed to add expense", "error");
       }
+    } catch {
+      showNotification("Unable to save expense. Please try again.", "error");
     } finally {
       setIsLoading(false);
     }
   };
 
-  return (
-    <>
-      <Navbar />
-
-      <div className="min-h-screen pt-20 pb-12 px-4 sm:px-6">
-        <div className="max-w-xl mx-auto">
-
-          <h1 className="text-3xl sm:text-4xl font-bold bg-blue-600 bg-clip-text text-transparent mb-8">
-            Add Expense
-          </h1>
-
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 sm:p-8 shadow-xl border border-gray-200 dark:border-slate-700">
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-
-              {/* Date */}
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-                  Date
-                </label>
-                <input
-                  type="date"
-                  name="date"
-                  required
-                  value={form.date}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-slate-600 
-                bg-white dark:bg-slate-800 
-                text-gray-900 dark:text-white 
-                focus:outline-none focus:ring-2 focus:ring-blue-500 
-                transition"
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-                  Description
-                </label>
-                <input
-                  type="text"
-                  name="description"
-                  required
-                  value={form.description}
-                  onChange={handleChange}
-                  placeholder="Lunch, Grocery, etc."
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-slate-600 
-                bg-white dark:bg-slate-800 
-                text-gray-900 dark:text-white 
-                focus:outline-none focus:ring-2 focus:ring-blue-500 
-                transition"
-                />
-              </div>
-
-              {/* Amount */}
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-                  Amount ({currency})
-                </label>
-                <input
-                  type="text"
-                  name="amount"
-                  inputMode="decimal"
-                  value={form.amount}
-                  onChange={handleChange}
-                  placeholder="0.00"
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-slate-600 
-                bg-white dark:bg-slate-800 
-                text-gray-900 dark:text-white 
-                focus:outline-none focus:ring-2 focus:ring-blue-500 
-                transition"
-                />
-                {amountError && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {amountError}
-                  </p>
-                )}
-              </div>
-
-              {/* Category */}
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-                  Category
-                </label>
-
-                <div className="relative">
-                  <select
-                    name="type"
-                    value={form.type}
-                    onChange={handleChange}
-                    className="w-full appearance-none px-4 py-3 rounded-lg 
-                  border border-gray-300 dark:border-slate-600 
-                  bg-white dark:bg-slate-800 
-                  text-gray-900 dark:text-white 
-                  focus:outline-none focus:ring-2 focus:ring-blue-500 
-                  transition cursor-pointer"
-                  >
-                    {categories.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                      </option>
-                    ))}
-                  </select>
-
-                  <FontAwesomeIcon
-                    icon={faChevronDown}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none w-4 h-4"
-                  />
-                </div>
-              </div>
-
-              {/* Payment Mode */}
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
-                  Payment Mode
-                </label>
-
-                <div className="grid grid-cols-2 gap-3">
-                  {["online", "cash"].map((mode) => {
-                    const isActive = form.mode === mode;
-
-                    return (
-                      <button
-                        key={mode}
-                        type="button"
-                        onClick={() => setForm({ ...form, mode })}
-                        className={`py-3 rounded-lg font-medium transition-all duration-200 border cursor-pointer ${isActive
-                            ? "bg-green-600 text-white border-green-600 shadow-md"
-                            : "bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-700"
-                          }`}
-                      >
-                        {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Submit Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3 pt-4">
-
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="flex-1 bg-indigo-500
-                text-white py-3 rounded-lg font-semibold 
-                flex items-center justify-center gap-2 
-                hover:scale-[1.02] transition 
-                cursor-pointer disabled:opacity-50"
-                >
-                  {isLoading ? (
-                    <>
-                      <FontAwesomeIcon icon={faSpinner} className="animate-spin w-4 h-4" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <FontAwesomeIcon icon={faCheck} className="w-4 h-4" />
-                      Save Expense
-                    </>
-                  )}
-                </button>
-
-                <Link
-                  href="/dashboard"
-                  className="flex-1 sm:flex-none px-6 py-3 border 
-                rounded-lg text-center font-semibold 
-                border-blue-500 text-white bg-blue-600
-                transition cursor-pointer 
-                flex items-center justify-center gap-2"
-                >
-                  <FontAwesomeIcon icon={faArrowLeft} className="w-4 h-4" />
-                  Back
-                </Link>
-
-              </div>
-
-            </form>
-
-          </div>
-        </div>
-      </div>
-    </>
-  );
+  return <>
+    <Navbar />
+    <main className="app-shell" style={{ maxWidth: 760 }}>
+      <div className="page-heading"><h1>Add expense</h1><Link href="/dashboard" className="text-link">All expenses</Link></div>
+      <section className="panel">
+        <form onSubmit={handleSubmit}>
+          <fieldset disabled={isLoading}>
+            <ExpenseFields form={{ ...form, date: form.date ?? today }} currency={currency} onChange={handleChange} amountError={amountError} />
+            <div className="form-actions"><Link href="/dashboard" className="btn">Cancel</Link><button type="submit" disabled={isLoading} className="btn btn-primary">{isLoading ? "Saving…" : "Save expense"}</button></div>
+          </fieldset>
+        </form>
+      </section>
+    </main>
+  </>;
 }

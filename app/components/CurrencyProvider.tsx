@@ -58,7 +58,7 @@ export default function CurrencyProvider({ children }: { children: React.ReactNo
         if (active && data?.currency) {
           setCurrencyState(data.currency);
         }
-      } catch (error) {
+      } catch {
         if (active) {
           showNotification("Unable to load currency preference", "error");
         }
@@ -97,7 +97,7 @@ export default function CurrencyProvider({ children }: { children: React.ReactNo
       const data = await res.json();
       setCurrencyState(data.currency || nextCurrency);
       showNotification("Currency preference saved", "success");
-    } catch (error) {
+    } catch {
       showNotification("Unable to save currency preference", "error");
     }
   };

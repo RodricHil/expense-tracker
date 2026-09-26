@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useCallback } from "react";
 import Notification from "./Notification";
 
 const NotificationContext = createContext({
-  showNotification: (message, type) => {},
+  showNotification: /** @type {(message: string, type?: string) => void} */ (() => {}),
 });
 
 export function NotificationProvider({ children }) {

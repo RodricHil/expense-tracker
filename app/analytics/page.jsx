@@ -1,19 +1,19 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { defaultDateRange, loadExpensePage } from "@/lib/expenses";
 import { logError } from "@/lib/logger";
 import AnalyticsClientPage from "./analytics";
 
 export const metadata = {
-  title: "Analytics | Expense Tracker",
+  title: "Analytics | Finex",
   description: "View detailed analytics and insights about your spending patterns and financial trends",
   alternates: {
     canonical: "https://finex-tracker.vercel.app/analytics",
   },
   keywords: ["expense analytics", "spending insights", "financial reports", "budget analysis"],
   openGraph: {
-    title: "Analytics & Insights | Expense Tracker",
+    title: "Analytics & Insights | Finex",
     description: "View detailed analytics and insights about your spending patterns and financial trends",
     url: "https://finex-tracker.vercel.app/analytics",
     type: "website",

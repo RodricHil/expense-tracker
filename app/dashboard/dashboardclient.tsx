@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { formatAmount, inclusiveDays } from "@/lib/format";
+
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useCurrency } from "@/app/components/CurrencyProvider";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTrash, faPen, faChartPie, faEye, faWallet, faCalendarDays } from "@fortawesome/free-solid-svg-icons";
+import { faTrash, faPen } from "@fortawesome/free-solid-svg-icons";
 import EditExpenseModal from "@/app/components/EditExpenseModal";
 import { useNotification } from "@/app/components/elements/NotificationProvider";
 import DateRangeFilter from "@/app/components/DateRangeFilter";
@@ -104,6 +106,8 @@ export default function ExpensesPage({ initialRange, initialData }: Props) {
   // Bumped by the mutation handlers to re-run the load effect. Cheaper and
   // safer than a second copy of the fetch logic, and it keeps the effect's
   // dependency array complete.
+  const [loading, setLoading] = useState(!initialData);
+  const [error, setError] = useState("");
   const [reloadToken, setReloadToken] = useState(0);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -152,6 +156,8 @@ export default function ExpensesPage({ initialRange, initialData }: Props) {
 
   /** Re-run the load effect after a mutation, without duplicating the fetch. */
   const fetchExpenses = useCallback(() => {
+    setLoading(true);
+    setError("");
     setReloadToken((token) => token + 1);
   }, []);
 
@@ -165,15 +171,10 @@ export default function ExpensesPage({ initialRange, initialData }: Props) {
   const totalSpent = summary.allTimeTotal;
   const filteredSpent = summary.rangeTotal;
 
-  const topCategories = useMemo(
-    () =>
-      summary.byType
-        .slice(0, 4)
-        .map(({ type, amount }) => [type, amount] as [string, number]),
-    [summary]
-  );
-
   const handleDateRangeChange = (range: DateRange) => {
+    if (range.startDate.getTime() === dateRange.startDate.getTime() && range.endDate.getTime() === dateRange.endDate.getTime()) return;
+    setLoading(true);
+    setError("");
     setDateRange(range);
     setCurrentPage(1); // Reset to page 1 when date range changes
   };
@@ -195,12 +196,19 @@ export default function ExpensesPage({ initialRange, initialData }: Props) {
     }
 
     async function load() {
-      const data = await loadExpenses(dateRange, currentPage);
-      if (cancelled || !data) return;
-
-      setExpenses(data.expenses);
-      setPagination(data.pagination);
-      setSummary(data.summary);
+      try {
+        const data = await loadExpenses(dateRange, currentPage);
+        if (cancelled) return;
+        if (!data) throw new Error("Load failed");
+        setExpenses(data.expenses);
+        setPagination(data.pagination);
+        setSummary(data.summary);
+        setError("");
+      } catch {
+        if (!cancelled) setError("Couldn’t load expenses. Try again.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
 
     load();
@@ -219,437 +227,70 @@ export default function ExpensesPage({ initialRange, initialData }: Props) {
     if (!deletingExpenseId) return;
 
     setIsDeleting(true);
-    const res = await fetch("/api/expenses", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: deletingExpenseId }),
-    });
-
-    setIsDeleting(false);
-
-    if (res.ok) {
+    try {
+      const res = await fetch("/api/expenses", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: deletingExpenseId }),
+      });
+      if (!res.ok) throw new Error("Delete failed");
       setShowDeleteConfirm(false);
       setDeletingExpenseId(null);
-
-      // Deleting the only row on a page would otherwise leave the user staring
-      // at an empty page N. Stepping back re-runs the effect via `currentPage`;
-      // otherwise ask for a plain refresh.
       if (expenses.length === 1 && currentPage > 1) {
+        setLoading(true);
         setCurrentPage((page) => page - 1);
-      } else {
-        fetchExpenses();
-      }
-
-      showNotification("Expense deleted successfully", "success");
+      } else fetchExpenses();
+      showNotification("Expense deleted", "success");
+    } catch {
+      showNotification("Couldn’t delete the expense. Try again.", "error");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
-  const getExpenseTypeColor = (type: string): string => {
-    const colors: Record<string, string> = {
-      food: "from-orange-400 to-orange-600",
-      electronics: "from-blue-400 to-blue-600",
-      dress: "from-pink-400 to-pink-600",
-      service: "from-indigo-400 to-indigo-600",
-      gardening: "from-green-400 to-green-600",
-      furniture: "from-amber-400 to-amber-600",
-      "house utility": "from-cyan-400 to-cyan-600",
-      footwear: "from-purple-400 to-purple-600",
-      "makeup/grooming": "from-rose-400 to-rose-600",
-      subscriptions: "from-teal-400 to-teal-600",
-      "toy/figures/stationary": "from-yellow-400 to-yellow-600",
-      "travel expenses": "from-sky-400 to-sky-600",
-      gifts: "from-fuchsia-400 to-fuchsia-600",
-    };
-    return colors[type] || "from-gray-400 to-gray-600";
-  };
+  const dateLabel = (value: string) => new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  const actions = (expense: Expense) => <div className="flex justify-end gap-1">
+    <button type="button" className="btn btn-icon" aria-label={`Edit ${expense.description}`} onClick={() => setEditingExpense(expense)}><FontAwesomeIcon icon={faPen} className="w-3.5 h-3.5" /></button>
+    <button type="button" className="btn btn-icon btn-danger" aria-label={`Delete ${expense.description}`} onClick={() => handleDelete(expense._id)}><FontAwesomeIcon icon={faTrash} className="w-3.5 h-3.5" /></button>
+  </div>;
 
-
-  return (
-    <>
-      <Navbar />
-      <div className="min-h-screen pt-24 pb-12 ">
-        {/* Header */}
-        <div className="px-6 lg:px-12 3xl:px-60 mb-8">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-4xl md:text-5xl font-black bg-blue-500 bg-clip-text text-transparent mb-2">
-                Dashboard
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400">Track and manage your expenses</p>
-            </div>
-            <Link
-              href="/add-expenses"
-              className=" bg-blue-600 hover:bg-blue-800 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hidden md:block"
-            >
-              + Add Expense
-            </Link>
+  return <>
+    <Navbar />
+    <main className="app-shell">
+      <div className="page-heading"><div><h1>Expenses</h1><p>{dateRange.label}</p></div><Link href="/add-expenses" className="btn btn-primary">Add expense</Link></div>
+      <div className="stack">
+        <DateRangeFilter onRangeChange={handleDateRangeChange} />
+        {error && <div className="error-state" role="alert"><p>{error}</p><button type="button" className="btn" onClick={fetchExpenses}>Retry</button></div>}
+        {loading && <p role="status" className="muted">Updating expenses…</p>}
+        {!error && <div className="stack" aria-busy={loading} style={{ opacity: loading ? .45 : 1 }}>
+          <div className="stats">
+            <div className="stat"><p className="stat-label">Spent in range</p><p className="stat-value">{currency} {formatAmount(filteredSpent)}</p></div>
+            <div className="stat"><p className="stat-label">Daily average</p><p className="stat-value">{currency} {formatAmount(filteredSpent / inclusiveDays(dateRange.startDate, dateRange.endDate))}</p></div>
+            <div className="stat"><p className="stat-label">All-time spending</p><p className="stat-value">{currency} {formatAmount(totalSpent)}</p></div>
           </div>
-        </div>
-
-        {/* Date Range Filter */}
-        <div className="px-6 lg:px-12 3xl:px-60 cursor-pointer ">
-          <DateRangeFilter onRangeChange={handleDateRangeChange} />
-        </div>
-
-        {/* Stats Cards */}
-        <div className="px-6 lg:px-12 3xl:px-60 grid grid-cols-1 md:grid-cols-3 gap-6 my-8 cursor-pointer ">
-          <div className="glass rounded-2xl p-6 backdrop-blur-xl border border-white/20 dark:border-white/10">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white text-sm font-medium mb-1">Total Spent (All Time)</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">{currency} {totalSpent.toLocaleString()}</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-green-500 flex items-center justify-center">
-                <FontAwesomeIcon icon={faWallet} className="text-white w-6 h-6" />
-              </div>
-            </div>
-          </div>
-
-          <div className="glass rounded-2xl p-6 backdrop-blur-xl border border-white/20 dark:border-white/10">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white text-sm font-medium mb-1">{dateRange.label}</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">{currency} {filteredSpent.toLocaleString()}</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-cyan-500 flex items-center justify-center">
-                <FontAwesomeIcon icon={faCalendarDays} className="text-white w-6 h-6" />
-              </div>
-            </div>
-          </div>
-
-          <div className="glass rounded-2xl p-6 backdrop-blur-xl border border-white/20 dark:border-white/10">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white text-sm font-medium mb-1">Entries in Range</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">{pagination.total}</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-amber-500 flex items-center justify-center">
-                <FontAwesomeIcon icon={faEye} className="text-white w-6 h-6" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="px-6 lg:px-12 3xl:px-60 grid gap-6 mb-8 md:grid-cols-[1.4fr_0.8fr]">
-          <div className="glass rounded-3xl p-6 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-xl">
-            <div className="flex items-center justify-between gap-4 mb-5">
-              <div>
-                <p className="text-sm uppercase tracking-[0.24em] text-slate-300">Top Categories</p>
-                <h3 className="text-2xl font-semibold text-white">Spending insights</h3>
-              </div>
-              <Link
-                href="/analytics"
-                className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-950/20 transition hover:bg-slate-800"
-              >
-                View Analytics
-              </Link>
-            </div>
-            <div className="space-y-4">
-              {topCategories.length === 0 ? (
-                <p className="text-slate-400">No expense categories available in the selected range.</p>
-              ) : (
-                topCategories.map(([category, amount], idx) => (
-                  <div key={category} className="space-y-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-medium text-slate-200 capitalize">{category}</p>
-                      <p className="text-sm font-semibold text-white">{currency} {amount.toLocaleString()}</p>
-                    </div>
-                    <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-linear-to-r from-indigo-500 to-cyan-400"
-                        style={{ width: `${Math.min((amount / Math.max(filteredSpent, 1)) * 100, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="glass rounded-3xl p-6 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-xl">
-            <p className="text-sm uppercase tracking-[0.24em] text-slate-300 mb-3">Range summary</p>
-            <div className="space-y-4 text-slate-200">
-              <div className="rounded-3xl border border-slate-700/70 bg-slate-950/40 p-4">
-                <p className="text-sm text-slate-400">Average spend per day</p>
-                <p className="mt-2 text-2xl font-semibold">{currency} {pagination.total ? Math.round(filteredSpent / Math.max((dateRange.endDate.getTime() - dateRange.startDate.getTime()) / (1000 * 60 * 60 * 24) + 1, 1)).toLocaleString() : 0}</p>
-              </div>
-              <div className="rounded-3xl border border-slate-700/70 bg-slate-950/40 p-4">
-                <p className="text-sm text-slate-400">Selected range</p>
-                <p className="mt-2 text-lg font-semibold text-white">{dateRange.label}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="px-6 lg:px-12 3xl:px-60">
-          <div className="glass rounded-2xl py-6 px-4  backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-xl">
-            <div className="flex flex-col mb-6">
-              <h2 className="text-xl md:text-2xl md:hidden font-bold flex text-white items-base gap-2">
-                <FontAwesomeIcon icon={faChartPie} className="text-purple-600 w-6 h-6 mt-2" />
-                Expenses <br />({dateRange.label})
-              </h2>
-              <h2 className="text-xl md:text-2xl font-bold hidden md:flex text-white items-base gap-2">
-                <FontAwesomeIcon icon={faChartPie} className="text-purple-600 w-6 h-6 mt-1" />
-                Expenses ({dateRange.label})
-              </h2>
-              <div className="flex justify-end">
-                <Link
-                  href="/add-expenses"
-                  className="md:hidden bg-blue-600 w-max text-white font-semibold py-2  px-4 rounded-lg text-sm my-4"
-                >
-                  Add
-                </Link>
-              </div>
-            </div>
-
-            {pagination.total === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center mx-auto mb-4">
-                  <FontAwesomeIcon icon={faChartPie} className="text-gray-400 text-3xl" />
-                </div>
-                <p className="text-white text-lg mb-4">No expenses in this range</p>
-                <p className="text-gray-400 text-sm mb-6">Try selecting a different date range or add new expenses</p>
-                <Link
-                  href="/add-expenses"
-                  className="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg inline-block hover:shadow-lg transition-all"
-                >
-                  Add Expense
-                </Link>
-              </div>
-            ) : (
-              <>
-                {/* <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200 dark:border-gray-700">
-                      <th className="text-left py-4 px-4 font-semibold text-gray-900 dark:text-white">Date</th>
-                      <th className="text-left py-4 px-4 font-semibold text-gray-900 dark:text-white">Description</th>
-                      <th className="text-left py-4 px-4 font-semibold text-gray-900 dark:text-white">Type</th>
-                      <th className="text-left py-4 px-4 font-semibold text-gray-900 dark:text-white">Mode</th>
-                      <th className="text-right py-4 px-4 font-semibold text-gray-900 dark:text-white">Amount</th>
-                      <th className="text-center py-4 px-4 font-semibold text-gray-900 dark:text-white">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {expenses
-                      .map((exp, idx) => (
-                        <tr
-                          key={exp._id}
-                          className="border-b border-gray-100 dark:border-gray-800 hover:bg-white/50 dark:hover:bg-white/5 transition-colors"
-                        >
-                          <td className="py-4 px-4">
-                            <span className="text-gray-900 dark:text-white font-medium">
-                              {new Date(exp.date).toLocaleDateString("en-IN", {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                              })}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4 text-gray-700 dark:text-gray-300">{exp.description}</td>
-                          <td className="py-4 px-4">
-                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium text-white bg-linear-to-r ${getExpenseTypeColor(exp.type)}`}>
-                              {exp.type}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            <span
-                              className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${exp.mode === "cash"
-                                  ? "bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-200"
-                                  : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200"
-                                }`}
-                            >
-                              {exp.mode.charAt(0).toUpperCase() + exp.mode.slice(1)}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4 text-right">
-                            <span className="font-bold text-gray-900 dark:text-white text-lg">
-                              {currency} {exp.amount.toLocaleString()}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className="flex justify-center gap-3">
-                              <button
-                                onClick={() => setEditingExpense(exp)}
-                                className="p-2 rounded-lg text-blue-600 cursor-pointer dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
-                                title="Edit"
-                              >
-                                <FontAwesomeIcon icon={faPen} className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(exp._id)}
-                                className="p-2 rounded-lg text-red-600 cursor-pointer dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-                                title="Delete"
-                              >
-                                <FontAwesomeIcon icon={faTrash} className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
+          <section className="panel">
+            <div className="panel-heading"><h2>Transactions <span className="muted font-normal ml-2">{pagination.total}</span></h2><Link href="/analytics" className="text-link">View analytics →</Link></div>
+            {pagination.total === 0 ? <div className="empty-state"><p>No expenses in this range.</p><Link href="/add-expenses" className="btn btn-primary">Add expense</Link></div> : <>
+              <div className="hidden md:block overflow-x-auto">
+                <table className="expense-table"><caption className="sr-only">Expenses for {dateRange.label}</caption>
+                  <thead><tr><th scope="col">Date</th><th scope="col">Description</th><th scope="col">Category</th><th scope="col">Payment</th><th scope="col" className="text-right">Amount</th><th scope="col" className="text-right">Actions</th></tr></thead>
+                  <tbody>{expenses.map((expense) => <tr key={expense._id}>
+                    <td className="muted whitespace-nowrap">{dateLabel(expense.date)}</td><td className="description">{expense.description}</td><td><span className="badge category-badge">{expense.type}</span></td><td className="muted capitalize">{expense.mode}</td><td className="text-right money">{currency} {formatAmount(expense.amount)}</td><td>{actions(expense)}</td>
+                  </tr>)}</tbody>
                 </table>
-              </div> */}
-                <div className="overflow-x-auto">
-                  <table className="w-full hidden md:table">
-                    {/* ===== DESKTOP TABLE ===== */}
-                    <thead>
-                      <tr className="border-b border-gray-200 dark:border-gray-700 text-white">
-                        <th className="text-left py-4 px-4 font-semibold">Date</th>
-                        <th className="text-left py-4 px-4 font-semibold">Description</th>
-                        <th className="text-left py-4 px-4 font-semibold">Type</th>
-                        <th className="text-left py-4 px-4 font-semibold">Mode</th>
-                        <th className="text-right py-4 px-4 font-semibold">Amount</th>
-                        <th className="text-center py-4 px-4 font-semibold">Actions</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {expenses
-                        .map((exp) => (
-                          <tr
-                            key={exp._id}
-                            className="border-b border-gray-100 dark:border-gray-800 hover:bg-white/50 dark:hover:bg-white/5 transition-colors"
-                          >
-                            <td className="py-4 px-4 text-gray-300">
-                              {new Date(exp.date).toLocaleDateString("en-IN", {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                              })}
-                            </td>
-
-                            <td className="py-4 px-4 text-gray-300">{exp.description}</td>
-
-                            <td className="py-4 px-4">
-                              <span className={`px-3 py-1 rounded-full text-sm text-white bg-linear-to-r ${getExpenseTypeColor(exp.type)}`}>
-                                {exp.type}
-                              </span>
-                            </td>
-
-                            <td className="py-4 px-4">
-                              <span
-                                className={`px-3 py-1 rounded-full text-sm font-medium ${exp.mode === "cash"
-                                    ? "bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-200"
-                                    : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200"
-                                  }`}
-                              >
-                                {exp.mode}
-                              </span>
-                            </td>
-
-                            <td className="py-4 px-4 text-right text-white font-bold">
-                              {currency} {exp.amount.toLocaleString()}
-                            </td>
-                            <td className="py-4 px-4 text-center">
-                              {/* Actions */}
-                              <button onClick={() => setEditingExpense(exp)} className="p-2 rounded-lg text-blue-600 cursor-pointer dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors" title="Edit">
-                                <FontAwesomeIcon icon={faPen} className="w-4 h-4" />
-                              </button>
-                              <button onClick={() => handleDelete(exp._id)} className="p-2 rounded-lg text-red-600 cursor-pointer dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors" title="Delete">
-                                <FontAwesomeIcon icon={faTrash} className="w-4 h-4" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-
-                  {/* ===== MOBILE CARD VIEW ===== */}
-                  <div className="md:hidden space-y-4">
-                    {expenses
-                      .map((exp) => (
-                        <div
-                          key={exp._id}
-                          className="p-4 rounded-2xl bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-800"
-                        >
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="font-semibold text-sm text-gray-500">
-                              {new Date(exp.date).toLocaleDateString("en-IN")}
-                            </span>
-
-                            <span className="font-bold text-lg text-white">
-                              {currency} {exp.amount.toLocaleString()}
-                            </span>
-                          </div>
-
-                          <p className="text-gray-300 text-sm font-medium">
-                            {exp.description}
-                          </p>
-
-                          <div className="flex justify-between items-center mt-3">
-                            <span className={`px-3 py-1 rounded-full text-xs text-white bg-linear-to-r ${getExpenseTypeColor(exp.type)}`}>
-                              {exp.type}
-                            </span>
-
-                            <span
-                              className={`px-3 py-1 rounded-full text-xs ${exp.mode === "cash"
-                                  ? "bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-200"
-                                  : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200"
-                                }`}
-                            >
-                              {exp.mode}
-                            </span>
-                          </div>
-
-                          <div className="flex justify-end gap-3 mt-4">
-                            <button
-                              onClick={() => setEditingExpense(exp)}
-                              className="p-2 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30"
-                            >
-                              <FontAwesomeIcon icon={faPen} className="w-4 h-4" />
-                            </button>
-
-                            <button
-                              onClick={() => handleDelete(exp._id)}
-                              className="p-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30"
-                            >
-                              <FontAwesomeIcon icon={faTrash} className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-
-                {/* Pagination */}
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={pagination.totalPages}
-                  onPageChange={setCurrentPage}
-                  itemsPerPage={pagination.limit}
-                  totalItems={pagination.total}
-                />
-              </>
-            )}
-          </div>
-        </div>
-
-        {editingExpense && (
-          <EditExpenseModal
-            expense={editingExpense}
-            onClose={() => setEditingExpense(null)}
-            onUpdated={fetchExpenses}
-          />
-        )}
-
-        {showDeleteConfirm && (
-          <ConfirmationModal
-            title="Delete Expense?"
-            message="Are you sure you want to delete this expense? This action cannot be undone."
-            confirmText="Yes, Delete"
-            cancelText="No, Cancel"
-            isLoading={isDeleting}
-            isDangerous={true}
-            onConfirm={handleConfirmDelete}
-            onCancel={() => {
-              setShowDeleteConfirm(false);
-              setDeletingExpenseId(null);
-            }}
-          />
-        )}
+              </div>
+              <div className="md:hidden">{expenses.map((expense) => <article className="mobile-expense" key={expense._id}>
+                <div className="flex justify-between items-baseline gap-3"><p className="break-words min-w-0">{expense.description}</p><span className="money">{currency} {formatAmount(expense.amount)}</span></div>
+                <p className="muted text-xs">{dateLabel(expense.date)} · <span className="capitalize">{expense.mode}</span></p>
+                <div className="flex justify-between items-center gap-3"><span className="badge category-badge">{expense.type}</span>{actions(expense)}</div>
+              </article>)}</div>
+              <Pagination currentPage={currentPage} totalPages={pagination.totalPages} onPageChange={(page) => { setLoading(true); setCurrentPage(page); }} itemsPerPage={pagination.limit} totalItems={pagination.total} />
+            </>}
+          </section>
+        </div>}
       </div>
-    </>
-  );
+    </main>
+    {editingExpense && <EditExpenseModal expense={editingExpense} onClose={() => setEditingExpense(null)} onUpdated={fetchExpenses} />}
+    {showDeleteConfirm && <ConfirmationModal title="Delete expense?" message="This expense will be permanently removed." confirmText="Delete expense" cancelText="Cancel" isLoading={isDeleting} isDangerous onConfirm={handleConfirmDelete} onCancel={() => { setShowDeleteConfirm(false); setDeletingExpenseId(null); }} />}
+  </>;
 }

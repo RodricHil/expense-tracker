@@ -1,20 +1,20 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { defaultDateRange, loadExpensePage } from "@/lib/expenses";
 import { logError } from "@/lib/logger";
 import { DEFAULT_PAGE_SIZE } from "@/lib/validation";
 import ExpensesPage from "./dashboardclient";
 
 export const metadata = {
-  title: "Dashboard | Expense Tracker",
+  title: "Dashboard | Finex",
   description: "View and manage all your expenses with filtering, sorting, and detailed breakdowns",
   alternates: {
     canonical: "https://finex-tracker.vercel.app/dashboard",
   },
   keywords: ["dashboard", "expense management", "spending overview", "financial dashboard"],
   openGraph: {
-    title: "Expense Dashboard | Expense Tracker",
+    title: "Expense Dashboard | Finex",
     description: "View and manage all your expenses with filtering, sorting, and detailed breakdowns",
     url: "https://finex-tracker.vercel.app/dashboard",
     type: "website",

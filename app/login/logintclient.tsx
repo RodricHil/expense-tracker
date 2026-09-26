@@ -3,120 +3,62 @@
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useNotification } from "@/app/components/elements/NotificationProvider";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";
+import ThemeControl from "@/app/components/ThemeControl";
+import Brand from "@/app/components/Brand";
 
-export default function LoginClient() {
-  const { data: session, status } = useSession();
+export default function LoginClient({ hasAuthError = false }: { hasAuthError?: boolean }) {
+  const { status } = useSession();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const { showNotification } = useNotification();
+  const [error, setError] = useState(hasAuthError ? "Sign-in didn’t finish. Please try again." : "");
 
   useEffect(() => {
-    if (status === "authenticated" && session) {
-      showNotification("Logged in successfully", "success");
-      router.push("/dashboard");
-    }
-  }, [status, session, router]);
+    if (status === "authenticated") router.replace("/dashboard");
+  }, [status, router]);
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
-    await signIn("google", { callbackUrl: "/dashboard" });
+    setError("");
+    try {
+      await signIn("google", { callbackUrl: "/dashboard" });
+    } catch {
+      setError("Unable to connect to Google. Please try again.");
+      setIsLoading(false);
+    }
   };
 
-  if (status === "loading") {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-full border-4 border-purple-400 border-t-purple-600 animate-spin"></div>
-          <p className="text-gray-300">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (status === "authenticated") {
-    return null;
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-4 py-12">
-      {/* Animated background elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-      </div>
-
-      <div className="relative w-full max-w-md">
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 md:p-12 border border-white/20 shadow-2xl">
-          {/* Logo Section */}
-          <div className="flex justify-center mb-10">
-            <div className="h-16 w-16 rounded-2xl bg-blue-500  flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-300">
-              <span className="text-2xl font-black text-white">ET</span>
+    <main className="login-shell">
+      <header className="login-header"><Brand /><div className="flex items-center gap-5"><span className="muted text-xs hidden sm:inline">Personal expense tracker</span><ThemeControl /></div></header>
+      <div className="login-content">
+        <section className="login-intro" aria-labelledby="login-title">
+          <h1 id="login-title">A clearer view of your spending.</h1>
+          <p className="muted login-description">Track everyday expenses. Understand the bigger picture.</p>
+          <div className="login-preview" aria-label="Example expense overview">
+            <div className="preview-heading"><span>Spending overview</span><span className="badge">Example</span></div>
+            <div className="preview-total"><span className="muted text-xs">This month</span><p className="money">₹ 12,450.00</p></div>
+            <div className="preview-chart" aria-hidden="true">
+              {[28, 48, 35, 72, 44, 61, 86, 53, 39, 67, 47, 76].map((height, index) => <span key={index} style={{ height: `${height}%` }} />)}
             </div>
+            <div className="preview-axis" aria-hidden="true"><span>01</span><span>15</span><span>30</span></div>
+            <div className="preview-row"><span>Groceries <span className="badge">Food</span></span><span className="money">₹ 1,250.00</span></div>
+            <div className="preview-row"><span>Train ticket <span className="badge">Travel</span></span><span className="money">₹ 320.00</span></div>
           </div>
-
-          {/* Heading */}
-          <div className="text-center mb-8">
-            <h1 className="text-2xl md:text-4xl font-bold text-white mb-2">Welcome Back</h1>
-            <p className="text-gray-300 text-sm md:text-base">
-              Track your expenses with intelligence and ease
-            </p>
-          </div>
-
-          {/* Features */}
-          <div className="space-y-4 mb-10">
-            <div className="flex items-start gap-3 text-gray-200">
-              <div className="mt-1 w-5 h-5 rounded-full bg-purple-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                ✓
-              </div>
-              <div>
-                <p className="font-semibold">Smart Analytics</p>
-                <p className="text-xs text-gray-400">Real-time insights on your spending</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 text-gray-200">
-              <div className="mt-1 w-5 h-5 rounded-full bg-cyan-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                ✓
-              </div>
-              <div>
-                <p className="font-semibold">Secure & Private</p>
-                <p className="text-xs text-gray-400">Your data is encrypted and safe</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 text-gray-200">
-              <div className="mt-1 w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                ✓
-              </div>
-              <div>
-                <p className="font-semibold">Lightning Fast</p>
-                <p className="text-xs text-gray-400">Optimized performance for mobile & web</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Auth Button */}
-          <button
-            onClick={handleGoogleSignIn}
-            disabled={isLoading}
-            className="w-full text-sm md:text-xl cursor-pointer bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition duration-300 flex items-center justify-center gap-3 shadow-lg "
-          >
-            <FontAwesomeIcon icon={faGoogle} className="w-5 h-5" />
-            <span>{isLoading ? "Signing in..." : "Sign in with Google"}</span>
-            {!isLoading && <FontAwesomeIcon icon={faArrowRight} className="w-4 h-4" />}
+        </section>
+        <section className="login-form" aria-labelledby="signin-title">
+          <div className="login-form-mark" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 3h20v26H6zM11 10h10M11 16h10M11 22h6" /></svg></div>
+          <h2 id="signin-title">Sign in to Finex</h2>
+          <p className="muted">Your expenses, all in one place.</p>
+          <button type="button" onClick={handleGoogleSignIn} disabled={isLoading || status !== "unauthenticated"} className="btn btn-primary google-signin">
+            <FontAwesomeIcon icon={faGoogle} className="h-4 w-4" />
+            <span>{status === "loading" ? "Loading…" : status === "authenticated" ? "Opening dashboard…" : isLoading ? "Connecting…" : "Continue with Google"}</span>
+            <svg className="login-button-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6" /></svg>
           </button>
-
-          {/* Footer */}
-          <div className="mt-8 text-center text-xs text-gray-200">
-            <p>By signing in, you agree to our Terms of Service</p>
-            <p className="mt-1">and acknowledge our Privacy Policy</p>
-          </div>
-        </div>
-
-        {/* Bottom decoration */}
+          {error && <p role="alert" className="mt-4 text-red-300">{error}</p>}
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
