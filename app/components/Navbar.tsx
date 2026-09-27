@@ -129,7 +129,7 @@ export default function Navbar() {
         {navLinks.map((item) => <Link key={item.href} href={item.href} className="nav-link" aria-current={isCurrent(item.href) ? "page" : undefined} onClick={() => setOpen(false)}><FontAwesomeIcon icon={item.icon} aria-hidden="true" />{item.label}</Link>)}
         <button type="button" className="btn btn-primary" onClick={() => { setOpen(false); openAddExpense(); }}><FontAwesomeIcon icon={faPlus} />Add expense</button>
         {status === "authenticated" && <div className="mobile-account-row">
-          <label className="field"><span>Display currency</span><select className="input" value={currency} disabled={currencyLoading} onChange={(event) => void setCurrency(event.target.value)}>{options.map((option) => <option key={option.symbol} value={option.symbol}>{option.symbol} {option.label}</option>)}</select></label>
+          <div className="field"><span>Display currency</span>{currencySelect("mobile-currency-select")}</div>
           <button type="button" className="btn btn-ghost" onClick={() => { setOpen(false); setShowLogoutConfirm(true); }}><FontAwesomeIcon icon={faArrowRightFromBracket} />Sign out</button>
         </div>}
         {status === "unauthenticated" && <Link href="/login" className="btn" onClick={() => setOpen(false)}>Sign in</Link>}
