@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Poppins } from "next/font/google";
+import { IBM_Plex_Sans } from "next/font/google";
 import { unstable_rethrow } from "next/navigation";
 import { getServerSession, type Session } from "next-auth";
 import "./globals.css";
@@ -10,8 +10,8 @@ import { logError } from "@/lib/logger";
 import { getPreferredCurrency } from "@/lib/preferences";
 import type { SavedCard } from "@/lib/payment";
 
-const poppins = Poppins({
-  variable: "--font-poppins",
+const financeFont = IBM_Plex_Sans({
+  variable: "--font-finance",
   weight: ["400", "500", "600", "700"],
   subsets: ["latin"],
   display: "swap",
@@ -88,7 +88,7 @@ export default async function RootLayout({
         <script src="/theme.js" />
       </head>
       <body
-        className={`${poppins.variable} antialiased`}
+        className={`${financeFont.variable} antialiased`}
       >
         <Providers session={session} initialCurrency={currency} initialCards={cards}>
           {children}

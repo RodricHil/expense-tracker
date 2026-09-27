@@ -46,7 +46,7 @@ export default function SettingsClient() {
 
   return <>
     <Navbar />
-    <main className="app-shell">
+    <main id="main-content" tabIndex={-1} className="app-shell">
       <div className="page-heading"><div><h1>Settings</h1><p>Manage your preferences and saved payment cards.</p></div></div>
       <div className="settings-layout">
         <nav className="settings-nav hidden lg:flex" aria-label="Settings sections">

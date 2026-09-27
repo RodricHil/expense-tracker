@@ -1,7 +1,8 @@
 "use client";
 
+import { useAddExpense } from "@/app/components/AddExpenseProvider";
+
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import Link from "next/link";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import Navbar from "@/app/components/Navbar";
 import DateRangeFilter from "@/app/components/DateRangeFilter";
@@ -10,7 +11,7 @@ import { useCurrency } from "@/app/components/CurrencyProvider";
 import { formatAmount, inclusiveDays } from "@/lib/format";
 import { buildSpendingSeries, type Timeframe } from "@/lib/chart-data";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCalendarCheck, faCalendarDay, faChartColumn, faCircleExclamation, faCreditCard, faLayerGroup, faPlus, faRotateRight, faTrophy, faWallet } from "@fortawesome/free-solid-svg-icons";
+import { faCalendarCheck, faCalendarDay, faChartColumn, faCircleExclamation, faCreditCard, faLayerGroup, faPlus, faRotateRight, faWallet } from "@fortawesome/free-solid-svg-icons";
 import PaymentBreakdown from "@/app/components/PaymentBreakdown";
 import { StatSkeletons } from "@/app/components/Skeleton";
 import PaymentFilter, { ALL_PAYMENTS, appendPaymentFilter, describePaymentFilter, isSamePaymentFilter, type PaymentFilterValue } from "@/app/components/PaymentFilter";
@@ -32,6 +33,7 @@ const EMPTY_SUMMARY: Summary = { allTimeTotal: 0, rangeTotal: 0, byType: [], byM
 type Props = { initialRange: { startDate: string; endDate: string; label: string }; initialSummary: Summary | null };
 
 export default function AnalyticsClientPage({ initialRange, initialSummary }: Props) {
+  const { openAddExpense, expenseRevision } = useAddExpense();
   const [summary, setSummary] = useState(initialSummary ?? EMPTY_SUMMARY);
   const [dateRange, setDateRange] = useState<DateRange>({ startDate: new Date(initialRange.startDate), endDate: new Date(initialRange.endDate), label: initialRange.label });
   const [timeframe, setTimeframe] = useState<Timeframe>("Daily");
@@ -77,7 +79,7 @@ export default function AnalyticsClientPage({ initialRange, initialSummary }: Pr
     }
     void load();
     return () => controller.abort();
-  }, [dateRange, paymentFilter, retry]);
+  }, [dateRange, paymentFilter, retry, expenseRevision]);
 
   const chartData = useMemo(() => buildSpendingSeries(summary.byDay, dateRange.startDate, dateRange.endDate, timeframe), [summary.byDay, dateRange, timeframe]);
   const total = summary.rangeTotal;
@@ -90,8 +92,8 @@ export default function AnalyticsClientPage({ initialRange, initialSummary }: Pr
 
   return <>
     <Navbar />
-    <main className="app-shell">
-      <div className="page-heading"><div><h1>Analytics</h1><p>{dateRange.label}{filterLabel && ` · ${filterLabel}`}</p></div><Link href="/add-expenses" className="btn btn-primary"><FontAwesomeIcon icon={faPlus} />Add expense</Link></div>
+    <main id="main-content" tabIndex={-1} className="app-shell">
+      <div className="page-heading"><div><h1>Analytics</h1><p>{dateRange.label}{filterLabel && ` · ${filterLabel}`}</p></div><button type="button" className="btn btn-primary" onClick={openAddExpense}><FontAwesomeIcon icon={faPlus} />Add expense</button></div>
       <div className="stack">
         <DateRangeFilter onRangeChange={changeRange}><PaymentFilter value={paymentFilter} onChange={changePaymentFilter} /></DateRangeFilter>
         <p role="status" className="sr-only">{loading ? "Updating analytics…" : ""}</p>
@@ -100,26 +102,26 @@ export default function AnalyticsClientPage({ initialRange, initialSummary }: Pr
         {!error && !firstLoad && <div className="stack" aria-busy={loading} style={{ opacity: loading ? .6 : 1, transition: "opacity 160ms" }}>
           <div className="stats">
             <div className="stat"><span className="stat-icon"><FontAwesomeIcon icon={faWallet} aria-hidden="true" /></span><p className="stat-label">Spent in range</p><p className="stat-value">{currency} {formatAmount(total)}</p>{filterLabel && <p className="stat-hint">{filterLabel} only</p>}</div>
-            <div className="stat"><span className="stat-icon"><FontAwesomeIcon icon={faCalendarDay} aria-hidden="true" /></span><p className="stat-label">Daily average</p><p className="stat-value">{currency} {formatAmount(average)}</p></div>
+            <div className="stat"><span className="stat-icon"><FontAwesomeIcon icon={faCalendarDay} aria-hidden="true" /></span><p className="stat-label">Daily average</p><p className="stat-value">{currency} {formatAmount(average)}</p><p className="stat-hint">Across {days} calendar days</p></div>
             <div className="stat"><span className="stat-icon"><FontAwesomeIcon icon={faCalendarCheck} aria-hidden="true" /></span><p className="stat-label">Days with expenses</p><p className="stat-value">{summary.byDay.length}<span className="unit">/ {days}</span></p></div>
-            <div className="stat"><span className="stat-icon"><FontAwesomeIcon icon={faTrophy} aria-hidden="true" /></span><p className="stat-label">Top category</p><p className="stat-value capitalize" style={{ fontSize: "var(--fs-section)" }}>{topCategory?.type ?? "—"}</p>{topCategory && <p className="stat-hint">{currency} {formatAmount(topCategory.amount)}</p>}</div>
+            <div className="stat"><span className="stat-icon"><FontAwesomeIcon icon={faLayerGroup} aria-hidden="true" /></span><p className="stat-label">Top category</p><p className="stat-value capitalize" style={{ fontSize: "var(--fs-section)" }}>{topCategory?.type ?? "—"}</p>{topCategory && <p className="stat-hint">{currency} {formatAmount(topCategory.amount)}</p>}</div>
           </div>
-          <section className="panel" aria-labelledby="chart-heading">
+          <section className="panel trend-panel" aria-labelledby="chart-heading">
             <div className="panel-heading"><h2 id="chart-heading"><FontAwesomeIcon icon={faChartColumn} className="heading-icon" aria-hidden="true" />Spending over time</h2><div className="segmented" role="group" aria-label="Chart grouping">{timeframeOptions.map((option) => <button key={option} type="button" className="segment" aria-pressed={timeframe === option} onClick={() => setTimeframe(option)}>{option}</button>)}</div></div>
-            <div className="flex justify-between gap-4 flex-wrap text-xs muted"><span>Amount ({currency})</span>{peak && total > 0 && <span>Highest: <span className="text-secondary font-medium">{peak.label} · {currency} {formatAmount(peak.amount)}</span></span>}</div>
-            {!summary.byDay.length ? <div className="empty-state"><span className="empty-state-icon"><FontAwesomeIcon icon={faChartColumn} aria-hidden="true" /></span><strong>{filterLabel ? `No ${filterLabel} payments in this range` : "No spending in this range"}</strong><p>{filterLabel ? "Try another payment filter or a wider date range." : "Pick another range or add an expense to see trends."}</p><Link href="/add-expenses" className="btn"><FontAwesomeIcon icon={faPlus} />Add an expense</Link></div> : <>
-              <div className="chart" role="img" aria-label={`${timeframe} spending in ${currency}. Exact values are available in the data table below.`}>
+            <div className="flex justify-between gap-4 flex-wrap text-xs muted"><span className="chart-legend"><span className="legend-swatch" style={{ background: "var(--chart-1)" }} aria-hidden="true" />Expenses ({currency})</span>{peak && total > 0 && <span>Highest: <span className="text-secondary font-medium">{peak.label} · {currency} {formatAmount(peak.amount)}</span></span>}</div>
+            {!summary.byDay.length ? <div className="empty-state"><span className="empty-state-icon"><FontAwesomeIcon icon={faChartColumn} aria-hidden="true" /></span><strong>{filterLabel ? `No ${filterLabel} payments in this range` : "No spending in this range"}</strong><p>{filterLabel ? "Try another payment filter or a wider date range." : "Pick another range or add an expense to see trends."}</p><button type="button" className="btn" onClick={openAddExpense}><FontAwesomeIcon icon={faPlus} />Add an expense</button></div> : <>
+              <div className="chart" aria-label={`${timeframe} spending in ${currency}. Use arrow keys on the chart to explore values.`}>
                 {isMounted && <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }} accessibilityLayer>
                     <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 5" />
-                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "var(--muted)", fontSize: 13 }} minTickGap={40} tickMargin={12} tickFormatter={(label: string) => label.replace("Week of ", "")} />
+                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "var(--muted)", fontSize: 13 }} minTickGap={40} tickMargin={12} interval="preserveStartEnd" tickFormatter={(label: string) => label.replace("Week of ", "")} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fill: "var(--muted)", fontSize: 13 }} tickFormatter={axisFormat} width={56} tickMargin={8} domain={[0, "auto"]} />
                     <Tooltip cursor={{ fill: "var(--surface-hover)" }} content={({ active, payload, label }) => active && payload?.length ? <div className="chart-tooltip"><p className="muted text-xs">{label}</p><p className="money">{currency} {formatAmount(Number(payload[0].value))}</p></div> : null} />
                     <Bar dataKey="amount" name="Spent" fill="var(--chart-1)" maxBarSize={48} isAnimationActive={false} activeBar={{ fill: "var(--accent-text)" }} />
                   </BarChart>
                 </ResponsiveContainer>}
               </div>
-              <details className="chart-table"><summary>View data table</summary><div className="overflow-auto max-h-72 mt-4"><table className="expense-table"><caption className="sr-only">{timeframe} spending totals</caption><thead><tr><th scope="col">Period</th><th scope="col" className="text-right">Amount ({currency})</th></tr></thead><tbody>{chartData.map((row) => <tr key={row.key}><td>{row.label}</td><td className="money text-right">{formatAmount(row.amount)}</td></tr>)}</tbody></table></div></details>
+
             </>}
           </section>
           <div className="grid gap-[var(--space-section)] lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">

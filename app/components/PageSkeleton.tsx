@@ -37,10 +37,7 @@ export default function PageSkeleton({ variant, label }: { variant: Variant; lab
         <div className="stack">
           <section className="panel py-4" aria-hidden="true"><Skeleton height={40} /></section>
           <StatSkeletons />
-          {variant === "dashboard" ? <div className="dashboard-grid">
-            <section className="panel"><RowSkeletons rows={8} /></section>
-            <div className="dashboard-aside" aria-hidden="true"><section className="panel" style={{ height: 240 }} /><section className="panel" style={{ height: 280 }} /></div>
-          </div> : <section className="panel" aria-hidden="true"><Skeleton width={180} height={22} /><Skeleton height={300} style={{ marginTop: 24 }} /></section>}
+          {variant === "dashboard" ? <section className="panel"><RowSkeletons rows={8} /></section> : <section className="panel" aria-hidden="true"><Skeleton width={180} height={22} /><Skeleton height={300} style={{ marginTop: 24 }} /></section>}
         </div>
       </>}
     </main>

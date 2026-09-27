@@ -2,12 +2,10 @@
 
 import { useSyncExternalStore, useState } from "react";
 import { localDateKey } from "@/lib/format";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft, faCheck } from "@fortawesome/free-solid-svg-icons";
+import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import ExpenseFields, { cardSelectionError, paymentPayload } from "@/app/components/ExpenseFields";
-import Navbar from "@/app/components/Navbar";
+import Modal from "./Modal";
 import { useNotification } from "@/app/components/elements/NotificationProvider";
 import { useCurrency } from "@/app/components/CurrencyProvider";
 import { useCards } from "@/app/components/CardsProvider";
@@ -20,9 +18,8 @@ const subscribeToDate = (notify: () => void) => {
 };
 const serverDate = () => "";
 
-export default function AddExpense() {
+export default function AddExpenseModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const today = useSyncExternalStore(subscribeToDate, localDateKey, serverDate);
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [amountError, setAmountError] = useState("");
   const [cardError, setCardError] = useState("");
@@ -93,7 +90,8 @@ export default function AddExpense() {
 
       if (res.ok) {
         showNotification("Expense added successfully", "success");
-        router.push("/dashboard");
+        onSaved();
+        onClose();
       } else {
         showNotification("Couldn’t add the expense. Check the details and try again.", "error");
       }
@@ -104,20 +102,15 @@ export default function AddExpense() {
     }
   };
 
-  return <>
-    <Navbar />
-    <main className="app-shell">
-      <div className="content-narrow">
-        <div className="page-heading"><div><h1>Add expense</h1><p>Record a purchase and how you paid for it.</p></div><Link href="/dashboard" className="text-link"><FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />All expenses</Link></div>
-        <section className="panel" aria-label="Expense details">
-          <form onSubmit={handleSubmit}>
-            <fieldset disabled={isLoading} className="border-0 p-0 m-0 min-w-0">
-              <ExpenseFields form={{ ...form, date: form.date ?? today }} currency={currency} onChange={handleChange} amountError={amountError} cardError={cardError} />
-              <div className="form-actions"><Link href="/dashboard" className="btn">Cancel</Link><button type="submit" disabled={isLoading} className="btn btn-primary">{!isLoading && <FontAwesomeIcon icon={faCheck} aria-hidden="true" />}{isLoading ? "Saving…" : "Save expense"}</button></div>
-            </fieldset>
-          </form>
-        </section>
-      </div>
-    </main>
-  </>;
+  return <Modal title="Add expense" description="Record a purchase and how you paid for it." onClose={onClose} busy={isLoading} wide>
+    <form onSubmit={handleSubmit}>
+      <fieldset disabled={isLoading} className="border-0 p-0 m-0 min-w-0">
+        <ExpenseFields form={{ ...form, date: form.date ?? today }} currency={currency} onChange={handleChange} amountError={amountError} cardError={cardError} />
+        <div className="form-actions">
+          <button type="button" className="btn" disabled={isLoading} onClick={onClose}>Cancel</button>
+          <button type="submit" disabled={isLoading} className="btn btn-primary">{!isLoading && <FontAwesomeIcon icon={faCheck} aria-hidden="true" />}{isLoading ? "Saving…" : "Save expense"}</button>
+        </div>
+      </fieldset>
+    </form>
+  </Modal>;
 }

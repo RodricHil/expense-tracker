@@ -4,7 +4,7 @@ export default function Layout({ children, className = "" , id=""}) {
     return (
         <div id={id} className="min-h-screen">
             <Navbar />
-            <main className={`px-6 lg:px-12 xl:px-24 3xl:px-60 ${className}`}>
+            <main id="main-content" tabIndex={-1} className={`app-shell ${className}`}>
                 {children}
             </main>
         </div>

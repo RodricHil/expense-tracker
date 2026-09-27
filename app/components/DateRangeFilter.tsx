@@ -138,23 +138,23 @@ export default function DateRangeFilter({ onRangeChange, children }: DateRangeFi
   };
 
   return (
-    <section className="panel py-4" aria-label="Filters">
+    <section className="panel filter-panel py-4" aria-label="Filters">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <span className="text-secondary font-medium flex items-center gap-2"><FontAwesomeIcon icon={faCalendarDays} className="h-3.5 w-3.5 text-stone-500" aria-hidden="true" />Date range</span>
-        <div className="segmented" role="group" aria-label="Date presets">
+        <div className="segmented date-presets" role="group" aria-label="Date presets">
           {RANGE_PRESETS.map((item) => <button key={item.id} type="button" className="segment" aria-pressed={selectedRange === item.id} onClick={() => handlePresetSelect(item.id)}>{item.label}</button>)}
         </div>
       </div>
-      {selectedRange === "custom" && <div className="mt-5 pt-5 border-t border-stone-800">
-        <div className="form-grid">
+      {selectedRange === "custom" && <div className="custom-range">
+        <div className="custom-range-fields">
           <div className="field"><span>From</span><DatePicker label="Start date" value={customStart} max={customEnd || undefined} onChange={setCustomStart} /></div>
           <div className="field"><span>To</span><DatePicker label="End date" value={customEnd} min={customStart || undefined} onChange={setCustomEnd} /></div>
         </div>
-        {customStart && customEnd && customStart > customEnd && <p role="alert" className="field-error mt-3">End date must be on or after start date.</p>}
-        <div className="flex justify-end gap-3 mt-5">
-          <button type="button" className="btn" onClick={handleClear}>Reset</button>
+        <div className="custom-range-actions">
+          <button type="button" className="btn btn-ghost" onClick={handleClear}>Reset</button>
           <button type="button" className="btn btn-primary" disabled={!isDateKey(customStart) || !isDateKey(customEnd) || customStart > customEnd} onClick={handleCustomDateChange}>Apply range</button>
         </div>
+        {customStart && customEnd && customStart > customEnd && <p role="alert" className="field-error custom-range-error">End date must be on or after start date.</p>}
       </div>}
       {children && <div className="mt-4 pt-4 border-t border-stone-800">{children}</div>}
     </section>

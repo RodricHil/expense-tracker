@@ -39,7 +39,7 @@ export default function PaymentFilter({ value, onChange }: { value: PaymentFilte
 
   return <div className="flex items-center justify-between gap-3 flex-wrap">
     <span className="text-secondary font-medium flex items-center gap-2"><FontAwesomeIcon icon={faWallet} className="h-3.5 w-3.5 text-stone-500" aria-hidden="true" />Payment</span>
-    <div className="flex items-center gap-2 flex-wrap justify-end">
+    <div className="payment-filter-controls flex items-center gap-2 flex-wrap justify-end">
       <div className="segmented" role="group" aria-label="Payment method filter">
         <button type="button" className="segment" aria-pressed={!value.mode} onClick={() => onChange(ALL_PAYMENTS)}><FontAwesomeIcon icon={faLayerGroup} className="w-3.5 h-3.5" aria-hidden="true" />All</button>
         {PAYMENT_METHODS.map((mode) => <button key={mode} type="button" className="segment" aria-pressed={value.mode === mode} onClick={() => onChange({ mode, cardId: null })}><FontAwesomeIcon icon={PAYMENT_ICONS[mode]} className="w-3.5 h-3.5" aria-hidden="true" />{PAYMENT_METHOD_LABELS[mode]}</button>)}

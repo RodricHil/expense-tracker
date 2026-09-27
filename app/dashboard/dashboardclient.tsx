@@ -1,21 +1,20 @@
 "use client";
 
+import { useAddExpense } from "@/app/components/AddExpenseProvider";
+
 import { formatAmount, inclusiveDays } from "@/lib/format";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCurrency } from "@/app/components/CurrencyProvider";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowRight, faCalendarDay, faChartLine, faCircleExclamation, faLayerGroup, faPen, faPlus, faReceipt, faRotateRight, faTrash, faWallet, faCreditCard } from "@fortawesome/free-solid-svg-icons";
+import { faCalendarDay, faChartLine, faCircleExclamation, faPen, faPlus, faReceipt, faRotateRight, faTrash, faWallet } from "@fortawesome/free-solid-svg-icons";
 import EditExpenseModal from "@/app/components/EditExpenseModal";
 import { useNotification } from "@/app/components/elements/NotificationProvider";
 import DateRangeFilter from "@/app/components/DateRangeFilter";
 import Pagination from "@/app/components/Pagination";
 import ConfirmationModal from "@/app/components/ConfirmationModal";
-import Link from "next/link";
 import Navbar from "@/app/components/Navbar";
 import PaymentMethod from "@/app/components/PaymentMethod";
-import PaymentBreakdown from "@/app/components/PaymentBreakdown";
-import CategoryBreakdown from "@/app/components/CategoryBreakdown";
 import { RowSkeletons, StatSkeletons } from "@/app/components/Skeleton";
 import PaymentFilter, { ALL_PAYMENTS, appendPaymentFilter, describePaymentFilter, isSamePaymentFilter, type PaymentFilterValue } from "@/app/components/PaymentFilter";
 import { useCards } from "@/app/components/CardsProvider";
@@ -101,6 +100,7 @@ type Props = {
 };
 
 export default function ExpensesPage({ initialRange, initialData }: Props) {
+  const { openAddExpense, expenseRevision } = useAddExpense();
   const [expenses, setExpenses] = useState<Expense[]>(
     initialData?.expenses ?? []
   );
@@ -237,7 +237,7 @@ export default function ExpensesPage({ initialRange, initialData }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [loadExpenses, dateRange, currentPage, paymentFilter, reloadToken]);
+  }, [loadExpenses, dateRange, currentPage, paymentFilter, reloadToken, expenseRevision]);
 
   const handleDelete = (id: string) => {
     setDeletingExpenseId(id);
@@ -281,8 +281,8 @@ export default function ExpensesPage({ initialRange, initialData }: Props) {
 
   return <>
     <Navbar />
-    <main className="app-shell">
-      <div className="page-heading"><div><h1>Expenses</h1><p>{dateRange.label}{filterLabel && ` · ${filterLabel}`}</p></div><Link href="/add-expenses" className="btn btn-primary"><FontAwesomeIcon icon={faPlus} />Add expense</Link></div>
+    <main id="main-content" tabIndex={-1} className="app-shell">
+      <div className="page-heading"><div><h1>Expenses</h1><p>{dateRange.label}{filterLabel && ` · ${filterLabel}`}</p></div><button type="button" className="btn btn-primary" onClick={openAddExpense}><FontAwesomeIcon icon={faPlus} />Add expense</button></div>
       <div className="stack">
         <DateRangeFilter onRangeChange={handleDateRangeChange}><PaymentFilter value={paymentFilter} onChange={handlePaymentFilterChange} /></DateRangeFilter>
         {/* Announced, not shown: a visible "Updating…" line pushed the page down on every change. */}
@@ -299,10 +299,10 @@ export default function ExpensesPage({ initialRange, initialData }: Props) {
             <div className="stat"><span className="stat-icon"><FontAwesomeIcon icon={faReceipt} aria-hidden="true" /></span><p className="stat-label">Transactions</p><p className="stat-value">{pagination.total}</p></div>
             <div className="stat"><span className="stat-icon"><FontAwesomeIcon icon={faChartLine} aria-hidden="true" /></span><p className="stat-label">All-time spending</p><p className="stat-value">{currency} {formatAmount(totalSpent)}</p>{filterLabel && <p className="stat-hint">All payment methods</p>}</div>
           </div>
-          <div className="dashboard-grid">
+          <div className="min-w-0">
             <section className="panel" aria-labelledby="transactions-heading">
-              <div className="panel-heading"><h2 id="transactions-heading"><FontAwesomeIcon icon={faReceipt} className="heading-icon" aria-hidden="true" />Transactions <span className="count-badge">{pagination.total}</span></h2><Link href="/analytics" className="text-link">View analytics<FontAwesomeIcon icon={faArrowRight} aria-hidden="true" /></Link></div>
-              {pagination.total === 0 ? <div className="empty-state"><span className="empty-state-icon"><FontAwesomeIcon icon={faReceipt} aria-hidden="true" /></span><strong>{filterLabel ? `No ${filterLabel} payments in this range` : "No expenses in this range"}</strong><p>{filterLabel ? "Try another payment filter or a wider date range." : "Try a wider date range, or add your first expense."}</p><Link href="/add-expenses" className="btn btn-primary"><FontAwesomeIcon icon={faPlus} />Add expense</Link></div> : <>
+              <div className="panel-heading"><h2 id="transactions-heading"><FontAwesomeIcon icon={faReceipt} className="heading-icon" aria-hidden="true" />Transactions <span className="count-badge">{pagination.total}</span></h2></div>
+              {pagination.total === 0 ? <div className="empty-state"><span className="empty-state-icon"><FontAwesomeIcon icon={faReceipt} aria-hidden="true" /></span><strong>{filterLabel ? `No ${filterLabel} payments in this range` : "No expenses in this range"}</strong><p>{filterLabel ? "Try another payment filter or a wider date range." : "Try a wider date range, or add your first expense."}</p><button type="button" className="btn btn-primary" onClick={openAddExpense}><FontAwesomeIcon icon={faPlus} />Add expense</button></div> : <>
                 <div className="hidden lg:block table-scroll">
                   <table className="expense-table"><caption className="sr-only">Expenses for {dateRange.label}{filterLabel && `, ${filterLabel}`}</caption>
                     <thead><tr><th scope="col">Date</th><th scope="col">Description</th><th scope="col">Category</th><th scope="col">Payment</th><th scope="col" className="text-right">Amount</th><th scope="col" className="text-right"><span className="sr-only">Actions</span></th></tr></thead>
@@ -319,10 +319,6 @@ export default function ExpensesPage({ initialRange, initialData }: Props) {
                 <Pagination currentPage={currentPage} totalPages={pagination.totalPages} onPageChange={(page) => { setLoading(true); setCurrentPage(page); }} itemsPerPage={pagination.limit} totalItems={pagination.total} />
               </>}
             </section>
-            <aside className="dashboard-aside" aria-label="Spending summary">
-              <section className="panel" aria-labelledby="payment-heading"><div className="panel-heading"><h2 id="payment-heading"><FontAwesomeIcon icon={faCreditCard} className="heading-icon" aria-hidden="true" />Payment methods</h2></div><PaymentBreakdown byMode={summary.byMode} total={filteredSpent} currency={currency} /></section>
-              <section className="panel" aria-labelledby="category-heading"><div className="panel-heading"><h2 id="category-heading"><FontAwesomeIcon icon={faLayerGroup} className="heading-icon" aria-hidden="true" />Top categories</h2><span className="panel-meta">Share of total</span></div><CategoryBreakdown categories={summary.byType} total={filteredSpent} currency={currency} limit={5} /></section>
-            </aside>
           </div>
         </div>}
       </div>

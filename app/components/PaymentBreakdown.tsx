@@ -20,7 +20,7 @@ export default function PaymentBreakdown({ byMode, total, currency }: { byMode: 
       {rows.filter(({ amount }) => amount > 0).map(({ mode, amount }) => <span key={mode} style={{ width: `${amount / total * 100}%`, background: SWATCH[mode] }} />)}
     </div>
     <ul className="grid gap-4">
-      {rows.map(({ mode, amount }) => <li className="flex items-center justify-between gap-4" key={mode}>
+      {rows.map(({ mode, amount }) => <li className="payment-breakdown-row flex items-center justify-between gap-4" key={mode}>
         <div className="flex items-center gap-3 min-w-0">
           <span className="legend-swatch" style={{ background: SWATCH[mode] }} aria-hidden="true" />
           <FontAwesomeIcon icon={PAYMENT_ICONS[mode]} className="w-3.5 h-3.5 text-stone-500 shrink-0" aria-hidden="true" />

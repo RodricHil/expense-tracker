@@ -12,8 +12,7 @@ interface ConfirmationModalProps {
   isDangerous?: boolean;
 }
 export default function ConfirmationModal({ title, message, confirmText = "Confirm", cancelText = "Cancel", isLoading = false, onConfirm, onCancel, isDangerous = false }: ConfirmationModalProps) {
-  return <Modal title={title} onClose={onCancel} busy={isLoading}>
-    <p className="muted">{message}</p>
+  return <Modal title={title} description={message} onClose={onCancel} busy={isLoading}>
     <div className="form-actions">
       <button type="button" className="btn" disabled={isLoading} onClick={onCancel}>{cancelText}</button>
       <button type="button" className={`btn ${isDangerous ? "btn-danger" : "btn-primary"}`} disabled={isLoading} onClick={onConfirm}>{isLoading ? "Working…" : confirmText}</button>

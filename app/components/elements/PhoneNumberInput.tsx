@@ -136,7 +136,7 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({
           type="button"
           onClick={() => setIsModalOpen(true)}
           className={`flex items-center gap-2 px-3 py-2 cursor-pointer border rounded-none bg-[var(--surface)] text-[var(--text)]
-            ${error ? "border-red-500" : "border-stone-300"}`}
+            ${error ? "border-[var(--danger)]" : "border-[var(--border)]"}`}
         >
           {selectedCountry?.flag && (
             <Image
@@ -176,7 +176,7 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({
           onChange={handleInputChange}
           placeholder={placeholder}
           className={`flex-1 px-3 py-2 border border-l-0 rounded-none text-[var(--text)] w-full
-            ${error ? "border-red-500" : "border-stone-300"}
+            ${error ? "border-[var(--danger)]" : "border-[var(--border)]"}
             focus:outline-none outline-none`}
         />
       </div>

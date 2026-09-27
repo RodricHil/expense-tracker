@@ -8,6 +8,7 @@ import { faXmark } from "@fortawesome/free-solid-svg-icons";
 export default function Modal({ title, description, children, onClose, busy = false, wide = false }: { title: string; description?: ReactNode; children: ReactNode; onClose: () => void; busy?: boolean; wide?: boolean }) {
   const panel = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  const descriptionId = useId();
   const close = useRef(onClose);
   const blocked = useRef(busy);
   useEffect(() => { close.current = onClose; blocked.current = busy; });
@@ -39,8 +40,8 @@ export default function Modal({ title, description, children, onClose, busy = fa
   // dialog inside the header and clipped it. Modals only mount after a user
   // action, so `document` always exists here.
   return createPortal(<div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onClose(); }}>
-    <div ref={panel} className={`modal ${wide ? "modal-wide" : ""}`} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-busy={busy} tabIndex={-1}>
-      <div className="modal-heading"><div><h2 id={titleId}>{title}</h2>{description && <p className="muted mt-1">{description}</p>}</div><button type="button" className="btn btn-icon" aria-label="Close dialog" disabled={busy} onClick={onClose}><FontAwesomeIcon icon={faXmark} aria-hidden="true" /></button></div>
+    <div ref={panel} className={`modal ${wide ? "modal-wide" : ""}`} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={description ? descriptionId : undefined} aria-busy={busy} tabIndex={-1}>
+      <div className="modal-heading"><div><h2 id={titleId}>{title}</h2>{description && <p id={descriptionId} className="muted mt-1">{description}</p>}</div><button type="button" className="btn btn-icon" aria-label="Close dialog" disabled={busy} onClick={onClose}><FontAwesomeIcon icon={faXmark} aria-hidden="true" /></button></div>
       {children}
     </div>
   </div>, document.body);

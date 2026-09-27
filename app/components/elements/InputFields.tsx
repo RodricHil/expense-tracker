@@ -27,7 +27,7 @@ const FormInput: React.FC<FormInputProps> = ({ label, id, name, type, value, onC
                     value={value}
                     onChange={onChange}
                     placeholder={placeholder}
-                    className={`border rounded-none p-2 text-[var(--text)] w-full ${error ? 'border-red-500' : 'border-stone-300'} outline-none`}
+                    className={`border rounded-none p-2 text-[var(--text)] w-full ${error ? 'border-[var(--danger)]' : 'border-[var(--border)]'} outline-none`}
                 />
             ) : (
                 <input
@@ -37,7 +37,7 @@ const FormInput: React.FC<FormInputProps> = ({ label, id, name, type, value, onC
                     value={value}
                     placeholder={placeholder}
                     onChange={onChange}
-                    className={`border rounded-none p-2 w-full text-[var(--text)] ${error ? 'border-red-500' : 'border-stone-300'} outline-none`}
+                    className={`border rounded-none p-2 w-full text-[var(--text)] ${error ? 'border-[var(--danger)]' : 'border-[var(--border)]'} outline-none`}
                 />
             )}
             {error && <p className="text-red-300 text-left mt-1 text-xs">{error}</p>}
