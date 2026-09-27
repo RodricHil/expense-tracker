@@ -43,7 +43,7 @@ export default function DatePicker({ value, onChange, label, required = false, m
     let key = isDateKey(value) ? value : localDateKey();
     if (validMin && key < validMin) key = validMin;
     if (validMax && key > validMax) key = validMax;
-    if (root.current) setPosition(popoverPosition(root.current.getBoundingClientRect(), 360, 410, window.innerWidth, window.innerHeight));
+    if (root.current) setPosition(popoverPosition(root.current.getBoundingClientRect(), 360, 410, window.innerWidth, window.innerHeight, root.current.closest('[role="dialog"]')?.getBoundingClientRect()));
     const date = new Date(`${key}T00:00:00Z`);
     setView({ year: date.getUTCFullYear(), month: date.getUTCMonth() });
     setFocused(key);

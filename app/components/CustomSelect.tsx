@@ -17,7 +17,7 @@ export default function CustomSelect({ value, options, onChange, label, disabled
   const selected = options.findIndex((option) => option.value === value);
   const choose = (index: number) => { if (options[index]) onChange(options[index].value); setOpen(false); trigger.current?.focus(); };
   const show = () => {
-    if (trigger.current) setPosition(popoverPosition(trigger.current.getBoundingClientRect(), Math.max(trigger.current.offsetWidth, 120), Math.min(options.length * 44 + 10, 250), window.innerWidth, window.innerHeight));
+    if (trigger.current) setPosition(popoverPosition(trigger.current.getBoundingClientRect(), Math.max(trigger.current.offsetWidth, 120), Math.min(options.length * 44 + 10, 250), window.innerWidth, window.innerHeight, trigger.current.closest('[role="dialog"]')?.getBoundingClientRect()));
     setActive(Math.max(selected, 0)); setOpen(true);
   };
 
