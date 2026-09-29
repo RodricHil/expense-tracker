@@ -41,7 +41,7 @@ describe("saved card labels", () => {
   });
 
   it("explains the per-type limit", () => {
-    expect(CARD_LIMIT_PER_TYPE).toBe(5);
-    expect(cardLimitMessage("debit")).toBe("You can save up to 5 debit cards. Delete one to add another.");
+    expect(CARD_LIMIT_PER_TYPE).toBe(26);
+    expect(cardLimitMessage("debit")).toBe("You can save up to 26 debit cards. Delete one to add another.");
   });
 });

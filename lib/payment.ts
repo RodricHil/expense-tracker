@@ -31,7 +31,7 @@ export const CARD_TYPE_LABELS: Record<CardType, string> = {
 };
 
 /** Per type, per user. Enforced by the API; mirrored in the UI. */
-export const CARD_LIMIT_PER_TYPE = 5;
+export const CARD_LIMIT_PER_TYPE = 26;
 export const CARD_NAME_MAX_LENGTH = 40;
 
 /**

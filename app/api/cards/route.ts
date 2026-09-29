@@ -29,7 +29,7 @@ import {
  * by owner INSIDE the filter. Card data is limited to type, nickname and last
  * four digits by `cardCreateSchema`; nothing else is ever written.
  *
- * The 5-per-type limit is checked before the write AND re-counted after it.
+ * The 26-per-type limit is checked before the write AND re-counted after it.
  * Two concurrent creates can both pass the first check; the second check
  * catches that and rolls the extra card back, so the limit holds without a
  * transaction.

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * /api/cards — ownership, the 5-per-type limit, and the guarantee that only a
+ * /api/cards — ownership, the 26-per-type limit, and the guarantee that only a
  * type, nickname and last four digits are ever written. Everything below the
  * handler is mocked; no database, secret or network is needed.
  */
@@ -108,20 +108,33 @@ describe("POST /api/cards", () => {
     expect(cardModel.countDocuments).toHaveBeenCalledWith({ userId: OWNER_SUB, type: "credit" });
   });
 
-  it("refuses a sixth card of the same type with 409 and writes nothing", async () => {
+  it.each(["debit", "credit"])("allows the 26th %s card", async (type) => {
     signIn();
-    cardModel.countDocuments.mockResolvedValue(5);
+    cardModel.countDocuments.mockResolvedValueOnce(25).mockResolvedValueOnce(26);
+    cardModel.create.mockResolvedValue({ ...storedCard, type });
 
-    const res = await POST(jsonRequest("POST", newCard));
+    const res = await POST(jsonRequest("POST", { ...newCard, type }));
+
+    expect(res.status).toBe(201);
+    expect(cardModel.countDocuments).toHaveBeenCalledWith({ userId: OWNER_SUB, type });
+    expect(cardModel.deleteOne).not.toHaveBeenCalled();
+  });
+
+  it.each(["debit", "credit"])("refuses the 27th %s card with 409 and writes nothing", async (type) => {
+    signIn();
+    cardModel.countDocuments.mockResolvedValue(26);
+
+    const res = await POST(jsonRequest("POST", { ...newCard, type }));
 
     expect(res.status).toBe(409);
-    expect((await res.json()).code).toBe("CARD_LIMIT_REACHED");
+    expect(await res.json()).toMatchObject({ code: "CARD_LIMIT_REACHED", limit: 26 });
+    expect(cardModel.countDocuments).toHaveBeenCalledWith({ userId: OWNER_SUB, type });
     expect(cardModel.create).not.toHaveBeenCalled();
   });
 
   it("rolls back a card that a concurrent create pushed over the limit", async () => {
     signIn();
-    cardModel.countDocuments.mockResolvedValueOnce(4).mockResolvedValueOnce(6);
+    cardModel.countDocuments.mockResolvedValueOnce(25).mockResolvedValueOnce(27);
 
     const res = await POST(jsonRequest("POST", newCard));
 
@@ -152,7 +165,7 @@ describe("PUT /api/cards", () => {
   it("refuses to move a card into a type that is already full", async () => {
     signIn();
     cardModel.findOne.mockReturnValue({ lean: vi.fn(async () => ({ type: "debit" })) });
-    cardModel.countDocuments.mockResolvedValue(5);
+    cardModel.countDocuments.mockResolvedValue(26);
 
     const res = await PUT(jsonRequest("PUT", { ...newCard, id: CARD_ID }));
 
