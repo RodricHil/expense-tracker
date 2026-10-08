@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCircleCheck, faCircleExclamation, faCreditCard, faPen, faPlus, faRotateRight, faShieldHalved, faSliders, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faCircleCheck, faCircleExclamation, faCreditCard, faLayerGroup, faMobileScreenButton, faPen, faPlus, faRotateRight, faShieldHalved, faSliders, faTrash } from "@fortawesome/free-solid-svg-icons";
 import Navbar from "@/app/components/Navbar";
 import CustomSelect from "@/app/components/CustomSelect";
 import ConfirmationModal from "@/app/components/ConfirmationModal";
@@ -13,16 +13,36 @@ import { useCurrency } from "@/app/components/CurrencyProvider";
 import { useNotification } from "@/app/components/elements/NotificationProvider";
 import { getServerThemePreference, getThemePreference, setThemePreference, subscribeTheme, type ThemePreference } from "@/lib/theme";
 import { CARD_LIMIT_PER_TYPE, CARD_TYPE_LABELS, cardLimitMessage, maskedCardNumber, type CardType, type SavedCard } from "@/lib/payment";
+import PersonalOptionSettings from "@/app/components/PersonalOptionSettings";
 import CardFormModal from "./CardFormModal";
 
 const THEMES: { value: ThemePreference; label: string }[] = [{ value: "system", label: "System" }, { value: "light", label: "Light" }, { value: "dark", label: "Dark" }];
 /** Credit first: it is the type people most often want to tell apart. */
 const GROUPS: CardType[] = ["credit", "debit"];
+const SETTINGS_TABS = [
+  { id: "preferences", label: "Preferences", icon: faSliders },
+  { id: "cards", label: "Cards", icon: faCreditCard },
+  { id: "categories", label: "Categories", icon: faLayerGroup },
+  { id: "upi-apps", label: "UPI apps", icon: faMobileScreenButton },
+];
+const subscribeSection = (notify: () => void) => {
+  window.addEventListener("hashchange", notify);
+  window.addEventListener("popstate", notify);
+  return () => { window.removeEventListener("hashchange", notify); window.removeEventListener("popstate", notify); };
+};
+const getSection = () => SETTINGS_TABS.find((tab) => `#${tab.id}` === window.location.hash)?.id ?? "preferences";
+const serverSection = () => "preferences";
+function selectSection(id: string) {
+  window.history.pushState(null, "", `#${id}`);
+  window.dispatchEvent(new Event("hashchange"));
+}
+
 
 export default function SettingsClient() {
   const { currency, options, setCurrency, loading: currencyLoading } = useCurrency();
   const { cards, loading: cardsLoading, error: cardsError, reload, removeCard } = useCards();
   const { showNotification } = useNotification();
+  const activeSection = useSyncExternalStore(subscribeSection, getSection, serverSection);
   const theme = useSyncExternalStore(subscribeTheme, getThemePreference, getServerThemePreference);
   const [editing, setEditing] = useState<{ card?: SavedCard; type: CardType } | null>(null);
   const [deleting, setDeleting] = useState<SavedCard | null>(null);
@@ -47,14 +67,23 @@ export default function SettingsClient() {
   return <>
     <Navbar />
     <main id="main-content" tabIndex={-1} className="app-shell">
-      <div className="page-heading"><div><h1>Settings</h1><p>Manage your preferences and saved payment cards.</p></div></div>
+      <div className="page-heading"><div><h1>Settings</h1><p>Manage your preferences, cards, categories, and UPI apps.</p></div></div>
       <div className="settings-layout">
-        <nav className="settings-nav hidden lg:flex" aria-label="Settings sections">
-          <a className="nav-link" href="#preferences"><FontAwesomeIcon icon={faSliders} aria-hidden="true" />Preferences</a>
-          <a className="nav-link" href="#cards"><FontAwesomeIcon icon={faCreditCard} aria-hidden="true" />Cards</a>
-        </nav>
-        <div className="stack">
-          <section id="preferences" className="panel settings-section" aria-labelledby="preferences-heading">
+        <div className="settings-nav" role="tablist" aria-label="Settings sections">
+          {SETTINGS_TABS.map((tab, index) => <button key={tab.id} type="button" role="tab" id={`settings-tab-${tab.id}`} className="nav-link" aria-selected={activeSection === tab.id} aria-controls="settings-panel" tabIndex={activeSection === tab.id ? 0 : -1} onClick={() => selectSection(tab.id)} onKeyDown={(event) => {
+            let next = index;
+            if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (index + 1) % SETTINGS_TABS.length;
+            else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (index + SETTINGS_TABS.length - 1) % SETTINGS_TABS.length;
+            else if (event.key === "Home") next = 0;
+            else if (event.key === "End") next = SETTINGS_TABS.length - 1;
+            else return;
+            event.preventDefault();
+            selectSection(SETTINGS_TABS[next].id);
+            document.getElementById(`settings-tab-${SETTINGS_TABS[next].id}`)?.focus();
+          }}><FontAwesomeIcon icon={tab.icon} aria-hidden="true" />{tab.label}</button>)}
+        </div>
+        <div id="settings-panel" role="tabpanel" aria-labelledby={`settings-tab-${activeSection}`} tabIndex={0} className="stack min-w-0">
+          {activeSection === "preferences" && <section id="preferences" className="panel settings-section" aria-labelledby="preferences-heading">
             <div className="panel-heading"><h2 id="preferences-heading"><FontAwesomeIcon icon={faSliders} className="heading-icon" aria-hidden="true" />Preferences</h2></div>
             <div className="settings-row">
               <div><p className="font-medium" id="currency-label">Display currency</p><p className="muted text-xs">Used for every amount in the app. Saved to your account.</p></div>
@@ -74,9 +103,9 @@ export default function SettingsClient() {
                 }} data-value={option.value}>{theme === option.value && <FontAwesomeIcon icon={faCircleCheck} aria-hidden="true" />}{option.label}</button>)}
               </div>
             </div>
-          </section>
+          </section>}
 
-          <section id="cards" className="panel settings-section" aria-labelledby="cards-heading">
+          {activeSection === "cards" && <section id="cards" className="panel settings-section" aria-labelledby="cards-heading">
             <div className="panel-heading">
               <div>
                 <h2 id="cards-heading"><FontAwesomeIcon icon={faCreditCard} className="heading-icon" aria-hidden="true" />Cards</h2>
@@ -102,7 +131,7 @@ export default function SettingsClient() {
                     <span className="saved-card-icon"><FontAwesomeIcon icon={CARD_TYPE_ICONS[card.type]} aria-hidden="true" /></span>
                     <div className="min-w-0">
                       <p className="saved-card-name">{card.name}</p>
-                      <p className="saved-card-number"><span className="sr-only">{label} card ending in {card.last4}</span><span aria-hidden="true">{label} Card {maskedCardNumber(card)}</span></p>
+                      <p className="saved-card-number"><span className="sr-only">{label} card ending in {card.last4}</span><span aria-hidden="true">{card.network ? `${card.network === "rupay" ? "RuPay" : card.network === "visa" ? "Visa" : "Mastercard"} · ` : ""}{label} Card {maskedCardNumber(card)}</span></p>
                     </div>
                     <div className="flex gap-1">
                       <button type="button" className="btn btn-icon btn-sm btn-ghost" aria-label={`Edit ${card.name}`} title="Edit" onClick={() => setEditing({ card, type: card.type })}><FontAwesomeIcon icon={faPen} /></button>
@@ -112,7 +141,9 @@ export default function SettingsClient() {
                 </ul>}
               </div>;
             })}
-          </section>
+          </section>}
+          {activeSection === "categories" && <PersonalOptionSettings kind="category" />}
+          {activeSection === "upi-apps" && <PersonalOptionSettings kind="upiApp" />}
         </div>
       </div>
     </main>

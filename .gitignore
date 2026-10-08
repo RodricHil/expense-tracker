@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Generated from pinned OCR/PDF dependencies before dev/build
+/public/receipt-assets/core/
+/public/receipt-assets/worker.min.js
+/public/receipt-assets/pdf.worker.min.mjs
+/public/receipt-assets/standard_fonts/
+/public/receipt-assets/pdf-wasm/

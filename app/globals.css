@@ -398,7 +398,7 @@ h3 { font-size: var(--fs-card); line-height: 1.45; font-weight: 600; letter-spac
 
 /* ---------- Settings layout ---------- */
 .settings-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-section); align-items: start; }
-.settings-nav { display: flex; gap: 4px; overflow-x: auto; }
+.settings-nav { display: flex; gap: 4px; overflow-x: auto; min-width: 0; }
 @media (min-width: 1024px) {
   .settings-layout { grid-template-columns: 220px minmax(0, 1fr); }
   .settings-nav { position: sticky; top: calc(var(--header-h) + 28px); flex-direction: column; }
@@ -645,3 +645,42 @@ h3 { font-size: var(--fs-card); line-height: 1.45; font-weight: 600; letter-spac
     .pagination .btn { padding-inline: 6px; }
   }
 }
+
+/* Receipt selection and roomy expense dialogs. */
+.receipt-upload { margin-bottom: 20px; }
+.receipt-dropzone { width: 100%; display: flex; align-items: center; gap: 16px; padding: 16px 20px; border: 1px dashed var(--border); border-radius: 12px; background: var(--surface-hover); text-align: left; cursor: pointer; transition: border-color 150ms, background 150ms; }
+.receipt-dropzone:hover, .receipt-dropzone[data-dragging="true"] { border-color: var(--accent-text); }
+.receipt-dropzone:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
+.receipt-dropzone:disabled { cursor: wait; opacity: .7; }
+.receipt-upload-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; background: var(--surface); color: var(--accent-text); flex-shrink: 0; }
+.receipt-upload-copy { flex: 1; min-width: 0; }
+.receipt-upload-copy strong { display: block; font-size: 14px; overflow-wrap: anywhere; }
+.receipt-upload-copy small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+.receipt-upload-action { font-size: 13px; font-weight: 600; color: var(--accent-text); white-space: nowrap; }
+.receipt-upload-note { margin-top: 8px; font-size: 12px; color: var(--muted); }
+.receipt-scan-status { margin-top: 10px; font-size: 13px; }
+.receipt-text { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
+@media (min-width: 1024px) {
+  .modal-wide { max-width: 1280px; padding: 24px 32px; }
+  .expense-dialog-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 28px; align-items: start; }
+  .expense-dialog-layout .receipt-upload { margin-bottom: 0; }
+  .expense-dialog-layout .receipt-dropzone { flex-direction: column; align-items: flex-start; }
+  .expense-dialog-layout .receipt-upload-action { margin-left: 0; }
+  .modal-wide .form-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 24px; }
+}
+@media (max-width: 600px) {
+  .receipt-dropzone { padding: 14px; gap: 12px; flex-wrap: wrap; }
+  .receipt-upload-action { margin-left: 56px; flex-basis: calc(100% - 56px); }
+}
+
+.expense-description { resize: vertical; min-height: 72px; }
+.expense-table .description, .mobile-expense-title { white-space: pre-wrap; }
+@media (min-width: 1024px) {
+  .modal-wide .expense-payment-field { grid-column: span 2; }
+  .expense-payment-choices { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.settings-nav .nav-link { flex-shrink: 0; border: 0; background: transparent; cursor: pointer; text-align: left; }
+.settings-nav .nav-link[aria-selected="true"] { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+
+.settings-nav .nav-link[aria-selected="true"] svg { color: var(--accent-text); }

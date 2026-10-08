@@ -5,6 +5,7 @@ import type { Session } from "next-auth";
 import NotificationProvider from "./NotificationProvider";
 import CurrencyProvider from "../CurrencyProvider";
 import AddExpenseProvider from "../AddExpenseProvider";
+import ExpenseOptionsProvider from "../ExpenseOptionsProvider";
 import CardsProvider from "../CardsProvider";
 import type { SavedCard } from "@/lib/payment";
 
@@ -24,7 +25,7 @@ export default function Providers({
     <SessionProvider session={session}>
       <NotificationProvider>
         <CurrencyProvider initialCurrency={initialCurrency}>
-          <CardsProvider initialCards={initialCards}><AddExpenseProvider>{children}</AddExpenseProvider></CardsProvider>
+          <CardsProvider initialCards={initialCards}><ExpenseOptionsProvider><AddExpenseProvider>{children}</AddExpenseProvider></ExpenseOptionsProvider></CardsProvider>
         </CurrencyProvider>
       </NotificationProvider>
     </SessionProvider>

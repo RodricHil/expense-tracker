@@ -33,9 +33,9 @@ const ExpenseSchema = new mongoose.Schema(
     },
 
     /**
-     * The saved card used when `mode` is "card". Only the card's id is stored;
-     * its nickname and last four digits live on the Card document. Null for
-     * online/cash payments, or when the card has since been deleted.
+     * The saved card used for direct card, online card, or RuPay UPI payments.
+     * Its nickname and last four digits live on the Card document. Null for
+     * cash/bank-funded UPI payments, or when the card has since been deleted.
      */
     cardId: {
       type: String,
@@ -45,31 +45,15 @@ const ExpenseSchema = new mongoose.Schema(
     type: {
       type: String,
       required: true,
-      enum: [
-        "food",
-        "electronics",
-        "dress",
-        "service",
-        "gardening",
-        "furniture",
-        "house utility",
-        "footwear",
-        "makeup/grooming",
-        "subscriptions",
-        "toy/figures/stationary",
-        "travel expenses",
-        "gifts",
-        "medicines",
-        "harmful item",
-        "investment",
-        "bills",
-        "repair",
-        "vehicle expenses",
-        "decoration",
-        "others",
-      ],
     },
 
+    onlineMethod: { type: String, enum: ["card", "upi", null] },
+    upiApp: { type: String, maxlength: 60 },
+    upiSource: { type: String, enum: ["bank", "rupay-credit", null] },
+    cardNetwork: { type: String, enum: ["visa", "mastercard", "rupay", null] },
+    merchant: { type: String, maxlength: 120 },
+    platform: { type: String, maxlength: 120 },
+    refunds: { type: [{ cents: { type: Number, required: true, min: 1 }, date: { type: Date, required: true }, source: { type: String, required: true, maxlength: 120 } }], default: undefined },
     amount: {
       type: mongoose.Schema.Types.Decimal128,
       required: true,

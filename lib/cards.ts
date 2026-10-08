@@ -19,6 +19,7 @@ type LeanCard = {
   type: CardType;
   name: string;
   last4: string;
+  network?: SavedCard["network"];
 };
 
 /** The only fields that ever leave the server. */
@@ -28,6 +29,7 @@ export function serializeCard(card: LeanCard): SavedCard {
     type: card.type,
     name: card.name,
     last4: card.last4,
+    ...(card.network !== undefined ? { network: card.network } : {}),
   };
 }
 
@@ -60,7 +62,7 @@ export function isOverCardLimit(count: number): boolean {
 }
 
 /** True when `cardId` names a card owned by this session. */
-export async function ownsCard(session: Session, cardId: string): Promise<boolean> {
-  const found = await Card.exists({ _id: cardId, ...cardOwnerFilter(session) });
+export async function ownsCard(session: Session, cardId: string, rupayCredit = false): Promise<boolean> {
+  const found = await Card.exists({ _id: cardId, ...cardOwnerFilter(session), ...(rupayCredit ? { type: "credit", network: "rupay" } : {}) });
   return Boolean(found);
 }

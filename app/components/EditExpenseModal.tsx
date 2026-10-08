@@ -6,7 +6,9 @@ import { useNotification } from "@/app/components/elements/NotificationProvider"
 import ExpenseFields, { cardSelectionError, paymentPayload } from "./ExpenseFields";
 import Modal from "./Modal";
 
-type Expense = { _id: string; date: string; description: string; quantity?: number; mode: string; cardId?: string | null; type: string; amount: number };
+import { refundTotal, type ExpenseDetails } from "@/lib/expense-details";
+
+type Expense = ExpenseDetails & { _id: string; date: string; description: string; quantity?: number; mode: string; cardId?: string | null; type: string; amount: number };
 export default function EditExpenseModal({ expense, onClose, onUpdated }: { expense: Expense; onClose: () => void; onUpdated: () => void }) {
   const [form, setForm] = useState({ ...expense, cardId: expense.cardId ?? null, date: expense.date.slice(0, 10), amount: expense.amount.toFixed(2) });
   const [isLoading, setIsLoading] = useState(false);
@@ -20,11 +22,12 @@ export default function EditExpenseModal({ expense, onClose, onUpdated }: { expe
     if (name === "amount" && value !== "" && !/^\d+$|^\d+\.\d{0,2}$/.test(value)) { setAmountError("Use up to two decimal places."); return; }
     if (name === "amount") setAmountError("");
     if (name === "mode" || name === "cardId") setCardError("");
-    setForm({ ...form, [name]: value });
+    setForm((previous) => ({ ...previous, [name]: value, ...(name === "cardId" ? { cardNetwork: cards.find((card) => card.id === value)?.network ?? "" } : {}) }));
   };
   const handleUpdate = async (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!form.amount || Number(form.amount) <= 0) { setAmountError("Enter an amount greater than zero."); return; }
+    if (Number(form.amount) < refundTotal(expense)) { setAmountError("Amount cannot be less than refunds already recorded."); return; }
     const cardProblem = cardSelectionError(form, cards);
     if (cardProblem) { setCardError(cardProblem); return; }
     setIsLoading(true);

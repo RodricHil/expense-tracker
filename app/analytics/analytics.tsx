@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import Navbar from "@/app/components/Navbar";
 import DateRangeFilter from "@/app/components/DateRangeFilter";
+import { CategoryLabel } from "@/app/components/ExpenseMetadata";
 import CategoryBreakdown from "@/app/components/CategoryBreakdown";
 import { useCurrency } from "@/app/components/CurrencyProvider";
 import { formatAmount, inclusiveDays } from "@/lib/format";
@@ -25,6 +26,8 @@ type DateRange = { startDate: Date; endDate: Date; label: string };
 type Summary = {
   allTimeTotal: number;
   rangeTotal: number;
+  refundTotal?: number;
+  netRangeTotal?: number;
   byType: { type: string; amount: number }[];
   byMode: { mode: string; amount: number }[];
   byDay: { date: string; amount: number }[];
@@ -104,8 +107,9 @@ export default function AnalyticsClientPage({ initialRange, initialSummary }: Pr
             <div className="stat"><span className="stat-icon"><FontAwesomeIcon icon={faWallet} aria-hidden="true" /></span><p className="stat-label">Spent in range</p><p className="stat-value">{currency} {formatAmount(total)}</p>{filterLabel && <p className="stat-hint">{filterLabel} only</p>}</div>
             <div className="stat"><span className="stat-icon"><FontAwesomeIcon icon={faCalendarDay} aria-hidden="true" /></span><p className="stat-label">Daily average</p><p className="stat-value">{currency} {formatAmount(average)}</p><p className="stat-hint">Across {days} calendar days</p></div>
             <div className="stat"><span className="stat-icon"><FontAwesomeIcon icon={faCalendarCheck} aria-hidden="true" /></span><p className="stat-label">Days with expenses</p><p className="stat-value">{summary.byDay.length}<span className="unit">/ {days}</span></p></div>
-            <div className="stat"><span className="stat-icon"><FontAwesomeIcon icon={faLayerGroup} aria-hidden="true" /></span><p className="stat-label">Top category</p><p className="stat-value capitalize" style={{ fontSize: "var(--fs-section)" }}>{topCategory?.type ?? "—"}</p>{topCategory && <p className="stat-hint">{currency} {formatAmount(topCategory.amount)}</p>}</div>
+            <div className="stat"><span className="stat-icon"><FontAwesomeIcon icon={faLayerGroup} aria-hidden="true" /></span><p className="stat-label">Top category</p><p className="stat-value capitalize" style={{ fontSize: "var(--fs-section)" }}>{topCategory ? <CategoryLabel value={topCategory.type} /> : "—"}</p>{topCategory && <p className="stat-hint">{currency} {formatAmount(topCategory.amount)}</p>}</div>
           </div>
+          <p className="text-sm muted">Refunds on purchases in this range: {currency} {formatAmount(summary.refundTotal ?? 0)} · Net spending: {currency} {formatAmount(summary.netRangeTotal ?? total)} · Net daily average: {currency} {formatAmount((summary.netRangeTotal ?? total) / days)}. Charts show original purchase amounts.</p>
           <section className="panel trend-panel" aria-labelledby="chart-heading">
             <div className="panel-heading"><h2 id="chart-heading"><FontAwesomeIcon icon={faChartColumn} className="heading-icon" aria-hidden="true" />Spending over time</h2><div className="segmented" role="group" aria-label="Chart grouping">{timeframeOptions.map((option) => <button key={option} type="button" className="segment" aria-pressed={timeframe === option} onClick={() => setTimeframe(option)}>{option}</button>)}</div></div>
             <div className="flex justify-between gap-4 flex-wrap text-xs muted"><span className="chart-legend"><span className="legend-swatch" style={{ background: "var(--chart-1)" }} aria-hidden="true" />Expenses ({currency})</span>{peak && total > 0 && <span>Highest: <span className="text-secondary font-medium">{peak.label} · {currency} {formatAmount(peak.amount)}</span></span>}</div>

@@ -2,6 +2,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
+import ExpenseOption from "@/models/ExpenseOption";
+import { EXPENSE_TYPES, refundSchema } from "@/lib/validation";
 import Expense from "@/models/Expense";
 import { loadExpensePage, ownerFilter, ownerId } from "@/lib/expenses";
 import { ownsCard } from "@/lib/cards";
@@ -36,9 +38,10 @@ import {
 /** 400 unless `cardId` is absent or one of the caller's own saved cards. */
 async function assertOwnCard(
   session: Parameters<typeof ownsCard>[0],
-  cardId: string | null
+  cardId: string | null,
+  rupayCredit = false
 ): Promise<void> {
-  if (cardId && !(await ownsCard(session, cardId))) {
+  if (cardId && !(await ownsCard(session, cardId, rupayCredit))) {
     throw new HttpError(400, "Selected card was not found");
   }
 }
@@ -54,11 +57,12 @@ export async function POST(req: Request) {
     // Validate before touching the database. Unknown keys (_id, createdAt,
     // updatedAt, userId, ...) are dropped by the schema, and the fields below
     // are destructured explicitly — the request body is never spread.
-    const { date, description, quantity, mode, type, amount, cardId } =
+    const { date, description, quantity, mode, type, amount, cardId, ...details } =
       expenseCreateSchema.parse(await parseJsonBody(req));
 
     await connectDB();
-    await assertOwnCard(session, cardId);
+    await assertOwnCard(session, cardId, mode === "online" && details.onlineMethod === "upi" && details.upiSource === "rupay-credit");
+    await assertCategory(session, type);
 
     const expense = await Expense.create({
       // Stable id: new rows never carry an email as their owner key.
@@ -69,6 +73,7 @@ export async function POST(req: Request) {
       mode,
       cardId,
       type,
+      ...details,
       amount: mongoose.Types.Decimal128.fromString(amount),
     });
 
@@ -152,15 +157,17 @@ export async function PUT(req: Request) {
       return unauthorized();
     }
 
-    const { id, date, description, quantity, mode, type, amount, cardId } =
+    const { id, date, description, quantity, mode, type, amount, cardId, ...details } =
       expenseUpdateSchema.parse(await parseJsonBody(req));
 
     await connectDB();
-    await assertOwnCard(session, cardId);
+    await assertOwnCard(session, cardId, mode === "online" && details.onlineMethod === "upi" && details.upiSource === "rupay-credit");
+    await assertCategory(session, type, id);
 
     const updatedExpense = await Expense.findOneAndUpdate(
       {
         _id: id,
+        $expr: { $lte: [{ $sum: "$refunds.cents" }, Math.round(Number(amount) * 100)] },
         ...ownerFilter(session), // ownership check, still enforced in the query
       },
       {
@@ -170,6 +177,7 @@ export async function PUT(req: Request) {
         mode,
         cardId,
         type,
+        ...details,
         amount: mongoose.Types.Decimal128.fromString(amount),
       },
       { new: true }
@@ -186,4 +194,33 @@ export async function PUT(req: Request) {
   } catch (error) {
     return handleRouteError(error);
   }
+}
+
+async function assertCategory(session: Parameters<typeof ownerId>[0], type: string, expenseId?: string) {
+  if ((EXPENSE_TYPES as readonly string[]).includes(type)) {
+    if (expenseId && await Expense.exists({ _id: expenseId, ...ownerFilter(session), type })) return;
+    throw new HttpError(400, "Create and select your own category in Categories first");
+  }
+  if (!await ExpenseOption.exists({ _id: type.slice(7), userId: ownerId(session), kind: "category", archived: { $ne: true } })) {
+    if (expenseId && await Expense.exists({ _id: expenseId, ...ownerFilter(session), type })) return;
+    throw new HttpError(400, "Selected category was not found");
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) return unauthorized();
+    const { id, amount, date, source } = refundSchema.parse(await parseJsonBody(req));
+    const cents = Math.round(Number(amount) * 100);
+    if (!Number.isSafeInteger(cents)) throw new HttpError(400, "Refund amount is too large");
+    await connectDB();
+    // Conditional write makes concurrent refunds unable to exceed the original purchase.
+    const updated = await Expense.findOneAndUpdate({
+      _id: id, ...ownerFilter(session),
+      $expr: { $lte: [{ $add: [{ $sum: "$refunds.cents" }, cents] }, { $round: [{ $multiply: [{ $toDouble: "$amount" }, 100] }, 0] }] },
+    }, { $push: { refunds: { cents, date, source } } }, { new: true, runValidators: true });
+    if (!updated) throw new HttpError(400, "Expense not found or refund exceeds the remaining amount");
+    return Response.json({ message: "Refund recorded" });
+  } catch (error) { return handleRouteError(error); }
 }

@@ -19,7 +19,11 @@ import { RowSkeletons, StatSkeletons } from "@/app/components/Skeleton";
 import PaymentFilter, { ALL_PAYMENTS, appendPaymentFilter, describePaymentFilter, isSamePaymentFilter, type PaymentFilterValue } from "@/app/components/PaymentFilter";
 import { useCards } from "@/app/components/CardsProvider";
 
-type Expense = {
+import RefundModal from "@/app/components/RefundModal";
+import ExpenseMetadata, { CategoryLabel } from "@/app/components/ExpenseMetadata";
+import { refundTotal, type ExpenseDetails } from "@/lib/expense-details";
+
+type Expense = ExpenseDetails & {
   _id: string;
   date: string;
   description: string;
@@ -55,6 +59,8 @@ type PageMeta = {
 type Summary = {
   allTimeTotal: number;
   rangeTotal: number;
+  refundTotal?: number;
+  netRangeTotal?: number;
   byType: { type: string; amount: number }[];
   byMode: { mode: string; amount: number }[];
   byDay: { date: string; amount: number }[];
@@ -116,6 +122,7 @@ export default function ExpensesPage({ initialRange, initialData }: Props) {
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState("");
   const [reloadToken, setReloadToken] = useState(0);
+  const [refundingExpense, setRefundingExpense] = useState<Expense | null>(null);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -271,6 +278,7 @@ export default function ExpensesPage({ initialRange, initialData }: Props) {
 
   const dateLabel = (value: string) => new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
   const actions = (expense: Expense) => <div className="flex justify-end gap-1">
+    <button type="button" className="btn btn-sm btn-ghost" onClick={() => setRefundingExpense(expense)} aria-label={`Track refund for ${expense.description}`}>{refundTotal(expense) >= expense.amount ? "Refunds" : "Refund"}</button>
     <button type="button" className="btn btn-icon btn-sm btn-ghost" aria-label={`Edit ${expense.description}`} title="Edit" onClick={() => setEditingExpense(expense)}><FontAwesomeIcon icon={faPen} /></button>
     <button type="button" className="btn btn-icon btn-sm btn-ghost btn-danger" aria-label={`Delete ${expense.description}`} title="Delete" onClick={() => handleDelete(expense._id)}><FontAwesomeIcon icon={faTrash} /></button>
   </div>;
@@ -299,6 +307,7 @@ export default function ExpensesPage({ initialRange, initialData }: Props) {
             <div className="stat"><span className="stat-icon"><FontAwesomeIcon icon={faReceipt} aria-hidden="true" /></span><p className="stat-label">Transactions</p><p className="stat-value">{pagination.total}</p></div>
             <div className="stat"><span className="stat-icon"><FontAwesomeIcon icon={faChartLine} aria-hidden="true" /></span><p className="stat-label">All-time spending</p><p className="stat-value">{currency} {formatAmount(totalSpent)}</p>{filterLabel && <p className="stat-hint">All payment methods</p>}</div>
           </div>
+          <p className="text-sm muted">Refunds on purchases in this range: {currency} {formatAmount(summary.refundTotal ?? 0)} · Net spending: {currency} {formatAmount(summary.netRangeTotal ?? filteredSpent)} · Net daily average: {currency} {formatAmount((summary.netRangeTotal ?? filteredSpent) / days)}. Daily averages include every calendar day in the range.</p>
           <div className="min-w-0">
             <section className="panel" aria-labelledby="transactions-heading">
               <div className="panel-heading"><h2 id="transactions-heading"><FontAwesomeIcon icon={faReceipt} className="heading-icon" aria-hidden="true" />Transactions <span className="count-badge">{pagination.total}</span></h2></div>
@@ -307,14 +316,15 @@ export default function ExpensesPage({ initialRange, initialData }: Props) {
                   <table className="expense-table"><caption className="sr-only">Expenses for {dateRange.label}{filterLabel && `, ${filterLabel}`}</caption>
                     <thead><tr><th scope="col">Date</th><th scope="col">Description</th><th scope="col">Category</th><th scope="col">Payment</th><th scope="col" className="text-right">Amount</th><th scope="col" className="text-right"><span className="sr-only">Actions</span></th></tr></thead>
                     <tbody>{expenses.map((expense) => <tr key={expense._id}>
-                      <td className="date">{dateLabel(expense.date)}</td><td className="description">{expense.description}</td><td><span className="badge category-badge">{expense.type}</span></td><td><PaymentMethod mode={expense.mode} cardId={expense.cardId} /></td><td className="text-right money">{currency} {formatAmount(expense.amount)}</td><td>{actions(expense)}</td>
+                      <td className="date">{dateLabel(expense.date)}</td><td className="description">{expense.description}<ExpenseMetadata expense={expense} currency={currency} /></td><td><span className="badge category-badge"><CategoryLabel value={expense.type} /></span></td><td><PaymentMethod mode={expense.mode} cardId={expense.cardId} /></td><td className="text-right money">{currency} {formatAmount(expense.amount)}</td><td>{actions(expense)}</td>
                     </tr>)}</tbody>
                   </table>
                 </div>
                 <div className="lg:hidden">{expenses.map((expense) => <article className="mobile-expense" key={expense._id}>
                   <div className="flex justify-between items-baseline gap-3"><p className="mobile-expense-title">{expense.description}</p><span className="money">{currency} {formatAmount(expense.amount)}</span></div>
+                  <ExpenseMetadata expense={expense} currency={currency} />
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"><span className="muted">{dateLabel(expense.date)}</span><PaymentMethod mode={expense.mode} cardId={expense.cardId} inline /></div>
-                  <div className="flex justify-between items-center gap-3"><span className="badge category-badge">{expense.type}</span>{actions(expense)}</div>
+                  <div className="flex justify-between items-center gap-3"><span className="badge category-badge"><CategoryLabel value={expense.type} /></span>{actions(expense)}</div>
                 </article>)}</div>
                 <Pagination currentPage={currentPage} totalPages={pagination.totalPages} onPageChange={(page) => { setLoading(true); setCurrentPage(page); }} itemsPerPage={pagination.limit} totalItems={pagination.total} />
               </>}
@@ -323,6 +333,7 @@ export default function ExpensesPage({ initialRange, initialData }: Props) {
         </div>}
       </div>
     </main>
+    {refundingExpense && <RefundModal expense={refundingExpense} onClose={() => setRefundingExpense(null)} onSaved={fetchExpenses} />}
     {editingExpense && <EditExpenseModal expense={editingExpense} onClose={() => setEditingExpense(null)} onUpdated={fetchExpenses} />}
     {showDeleteConfirm && <ConfirmationModal title="Delete expense?" message="This expense will be permanently removed." confirmText="Delete expense" cancelText="Cancel" isLoading={isDeleting} isDangerous onConfirm={handleConfirmDelete} onCancel={() => { setShowDeleteConfirm(false); setDeletingExpenseId(null); }} />}
   </>;

@@ -28,17 +28,17 @@ export function paymentIcon(mode: string): IconDefinition {
  */
 export default function PaymentMethod({ mode, cardId, inline = false }: { mode: string; cardId?: string | null; inline?: boolean }) {
   const { cardById, loading, error } = useCards();
-  const card = mode === "card" ? cardById(cardId) : undefined;
+  const card = cardById(cardId);
   const detail = card
     ? `${card.name} ${maskedCardNumber(card)}`
-    : mode === "card" && cardId && !loading && !error
+    : cardId && !loading && !error
       ? "Card removed"
       : null;
 
   return <span className={`payment ${inline ? "payment-inline" : ""}`}>
     <FontAwesomeIcon icon={card ? CARD_TYPE_ICONS[card.type] : paymentIcon(mode)} className="payment-icon" aria-hidden="true" />
     <span className="payment-text">
-      <span className="payment-label">{card ? `${CARD_TYPE_LABELS[card.type]} card` : paymentMethodLabel(mode)}</span>
+      <span className="payment-label">{card ? `${mode === "online" ? "Online · " : ""}${CARD_TYPE_LABELS[card.type]} card` : paymentMethodLabel(mode)}</span>
       {detail && <span className="payment-detail">{detail}</span>}
     </span>
   </span>;

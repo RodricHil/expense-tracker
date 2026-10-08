@@ -24,21 +24,38 @@ export default function CustomSelect({ value, options, onChange, label, disabled
   useEffect(() => {
     const outside = (event: PointerEvent) => { if (!root.current?.contains(event.target as Node)) setOpen(false); };
     const resize = () => setOpen(false);
-    const scroll = (event: Event) => { if (!root.current?.contains(event.target as Node)) setOpen(false); };
+    const scroll = (event: Event) => {
+      if (root.current?.contains(event.target as Node) || !list.current || !trigger.current) return;
+      // Keep the popover anchored while the dialog scrolls, including native
+      // scrolling that brings the trigger into view before a pointer click.
+      const bounds = trigger.current.getBoundingClientRect();
+      const dialog = trigger.current.closest('[role="dialog"]')?.getBoundingClientRect();
+      if (bounds.bottom < (dialog?.top ?? 0) || bounds.top > (dialog?.bottom ?? window.innerHeight)) setOpen(false);
+      else setPosition(popoverPosition(bounds, Math.max(bounds.width, 120), Math.min(options.length * 44 + 10, 250), window.innerWidth, window.innerHeight, dialog));
+    };
     document.addEventListener("pointerdown", outside);
     window.addEventListener("resize", resize);
     document.addEventListener("scroll", scroll, true);
     return () => { document.removeEventListener("pointerdown", outside); window.removeEventListener("resize", resize); document.removeEventListener("scroll", scroll, true); };
-  }, []);
+  }, [options.length]);
   useEffect(() => {
     if (open) {
       // The top layer escapes clipping and fixed-position containing blocks
       // while keeping the list inside its form/dialog for focus handling.
       list.current?.showPopover?.();
-      list.current?.focus();
+      list.current?.focus({ preventScroll: true });
     }
   }, [open]);
-  useEffect(() => { if (open) list.current?.querySelector('[data-active="true"]')?.scrollIntoView({ block: "nearest" }); }, [active, open]);
+  useEffect(() => {
+    const container = list.current;
+    const option = container?.querySelector('[data-active="true"]');
+    if (!open || !container || !option) return;
+    // Scroll only the options, so a long expense dialog stays in place.
+    const bounds = container.getBoundingClientRect();
+    const item = option.getBoundingClientRect();
+    if (item.top < bounds.top) container.scrollTop += item.top - bounds.top;
+    else if (item.bottom > bounds.bottom) container.scrollTop += item.bottom - bounds.bottom;
+  }, [active, open]);
 
   const keyboard = (event: React.KeyboardEvent) => {
     if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setOpen(false); trigger.current?.focus(); return; }

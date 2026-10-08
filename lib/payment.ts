@@ -43,6 +43,7 @@ export type SavedCard = {
   type: CardType;
   name: string;
   last4: string;
+  network?: "visa" | "mastercard" | "rupay" | null;
 };
 
 export function maskedCardNumber(card: Pick<SavedCard, "last4">): string {

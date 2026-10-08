@@ -76,6 +76,7 @@ type LeanExpense = Record<string, unknown> & { amount: { toString(): string } };
 type FacetBucket = { _id: string | null; amount: number; count?: number };
 
 type ExpenseFacets = {
+  refunds?: FacetBucket[];
   allTime?: FacetBucket[];
   rangeTotal?: FacetBucket[];
   byType?: FacetBucket[];
@@ -95,6 +96,8 @@ export type ExpensePage = {
   summary: {
     allTimeTotal: number;
     rangeTotal: number;
+    refundTotal: number;
+    netRangeTotal: number;
     byType: { type: string; amount: number }[];
     byMode: { mode: string; amount: number }[];
     byDay: { date: string; amount: number }[];
@@ -160,7 +163,7 @@ export async function loadExpensePage(
   // range facet; `allTime` stays the whole account, as its label says.
   const rangeFilter: PipelineStage.Match["$match"] = {
     ...dateFilter,
-    ...(mode ? { mode } : {}),
+    ...(mode && !cardId ? { mode } : {}),
     ...(cardId ? { cardId } : {}),
   };
 
@@ -170,6 +173,10 @@ export async function loadExpensePage(
     { $match: owner },
     {
       $facet: {
+        refunds: [
+          { $match: rangeFilter },
+          { $group: { _id: null, amount: { $sum: { $divide: [{ $sum: "$refunds.cents" }, 100] } } } },
+        ],
         allTime: [
           { $group: { _id: null, amount: { $sum: { $toDouble: "$amount" } } } },
         ],
@@ -245,6 +252,8 @@ export async function loadExpensePage(
     summary: {
       allTimeTotal: money(facets.allTime?.[0]?.amount),
       rangeTotal: money(facets.rangeTotal?.[0]?.amount),
+      refundTotal: money(facets.refunds?.[0]?.amount),
+      netRangeTotal: money((facets.rangeTotal?.[0]?.amount ?? 0) - (facets.refunds?.[0]?.amount ?? 0)),
       byType: (facets.byType ?? []).map((bucket) => ({
         type: bucket._id ?? "unknown",
         amount: money(bucket.amount),

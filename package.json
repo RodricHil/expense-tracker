@@ -19,7 +19,9 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "predev": "node scripts/prepare-receipt-assets.mjs",
+    "prebuild": "node scripts/prepare-receipt-assets.mjs"
   },
   "dependencies": {
     "@fortawesome/free-brands-svg-icons": "7.3.1",
@@ -29,9 +31,11 @@
     "mongoose": "9.9.4",
     "next": "16.3.3",
     "next-auth": "4.24.15",
+    "pdfjs-dist": "6.4.299",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "recharts": "3.10.1",
+    "tesseract.js": "7.0.0",
     "zod": "4.5.4"
   },
   "devDependencies": {

@@ -20,6 +20,7 @@ const CardSchema = new mongoose.Schema(
       required: true,
       enum: CARD_TYPES,
     },
+    network: { type: String, enum: ["visa", "mastercard", "rupay", null] },
     name: {
       type: String,
       required: true,

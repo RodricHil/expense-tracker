@@ -383,3 +383,21 @@ describe("payment filter query parameters", () => {
     expect(() => parse("cardId[$ne]=x&cardId=%7B%7D")).toThrow();
   });
 });
+
+describe("additional payment details", () => {
+  it("retains card references for online card payments", () => {
+    const parsed = expenseCreateSchema.parse({ ...validExpense, mode: "online", onlineMethod: "card", cardId: VALID_ID });
+    expect(parsed.cardId).toBe(VALID_ID);
+  });
+  it("requires a card for online card and RuPay UPI payments", () => {
+    expect(expenseCreateSchema.safeParse({ ...validExpense, mode: "online", onlineMethod: "card" }).success).toBe(false);
+    expect(expenseCreateSchema.safeParse({ ...validExpense, mode: "online", onlineMethod: "upi", upiSource: "rupay-credit" }).success).toBe(false);
+  });
+  it("never accepts refunds through ordinary expense writes", () => {
+    expect(expenseCreateSchema.parse({ ...validExpense, refunds: [{ cents: 999999 }] })).not.toHaveProperty("refunds");
+  });
+  it("accepts personal category ids but rejects operator objects", () => {
+    expect(expenseCreateSchema.safeParse({ ...validExpense, type: `custom:${VALID_ID}` }).success).toBe(true);
+    expect(expenseCreateSchema.safeParse({ ...validExpense, type: { $ne: null } }).success).toBe(false);
+  });
+});

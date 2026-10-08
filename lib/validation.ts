@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { z } from "zod";
+import { needsCard, detailsPayload, type ExpenseDetails } from "@/lib/expense-details";
 import { logError } from "@/lib/logger";
 import {
   CARD_NAME_MAX_LENGTH,
@@ -104,36 +105,44 @@ const amountSchema = z
   .refine((value) => AMOUNT_PATTERN.test(value), {
     message: "must be a number with at most 2 decimal places",
   })
-  .refine((value) => Number(value) > 0, { message: "must be greater than 0" });
+  .refine((value) => Number(value) > 0, { message: "must be greater than 0" })
+  .refine((value) => Number(value) <= 1_000_000_000_000, { message: "amount is too large" });
 
 const expenseFields = {
   date: dateSchema,
   description: descriptionSchema,
   quantity: quantitySchema,
   mode: z.enum(EXPENSE_MODES),
-  type: z.enum(EXPENSE_TYPES),
+  type: z.union([z.enum(EXPENSE_TYPES), z.string().regex(/^custom:[0-9a-f]{24}$/)]),
+  onlineMethod: z.enum(["card", "upi"]).nullable().optional(),
+  upiApp: z.string().trim().max(60).optional(),
+  upiSource: z.enum(["bank", "rupay-credit"]).nullable().optional(),
+  cardNetwork: z.enum(["visa", "mastercard", "rupay"]).nullable().optional(),
+  merchant: z.string().trim().max(120).optional(),
+  platform: z.string().trim().max(120).optional(),
   amount: amountSchema,
   cardId: objectIdSchema.nullable().optional(),
 };
 
 /**
- * A card payment must name one of the caller's saved cards; online and cash
- * payments never carry one. A stale id from a form the user switched away from
+ * Card payments (including online card and RuPay UPI) reference a saved card.
+ * Cash and bank-funded UPI never carry one. A stale id from a form the user switched away from
  * is dropped here rather than persisted. Whether the id belongs to the caller
  * is checked by the route, which is the only place that knows who the caller is.
  */
-function normaliseCardId<T extends { mode: string; cardId?: string | null }>(
+function normaliseCardId<T extends ExpenseDetails & { mode: string; cardId?: string | null }>(
   expense: T
 ): Omit<T, "cardId"> & { cardId: string | null } {
   return {
     ...expense,
-    cardId: expense.mode === "card" ? (expense.cardId ?? null) : null,
+    ...Object.fromEntries(Object.entries(detailsPayload(expense)).filter(([key]) => Object.prototype.hasOwnProperty.call(expense, key))),
+    cardId: needsCard(expense) ? (expense.cardId ?? null) : null,
   };
 }
 
 const requireCardForCardPayment = {
-  check: (expense: { mode: string; cardId?: string | null }) =>
-    expense.mode !== "card" || Boolean(expense.cardId),
+  check: (expense: { mode: string; cardId?: string | null; onlineMethod?: string | null; upiSource?: string | null }) =>
+    !needsCard(expense) || Boolean(expense.cardId),
   params: { message: "is required for a card payment", path: ["cardId"] },
 };
 
@@ -260,6 +269,7 @@ const cardNameSchema = z
 
 const cardFields = {
   type: z.enum(CARD_TYPES),
+  network: z.enum(["visa", "mastercard", "rupay"]).nullable().optional(),
   name: cardNameSchema,
   last4: z
     .string()
@@ -348,3 +358,10 @@ export function handleRouteError(error: unknown): Response {
     { status: 500 }
   );
 }
+
+export const refundSchema = z.object({ id: objectIdSchema, amount: amountSchema, date: dateSchema, source: z.string().trim().min(1).max(120) });
+export const optionSchema = z.object({ kind: z.enum(["category", "upiApp"]), name: z.string().trim().min(1).max(60) });
+
+export const categoryUpdateSchema = z.object({ kind: z.enum(["category", "upiApp"]).default("category"), id: objectIdSchema, name: z.string().trim().min(1).max(60) });
+
+export const optionDeleteSchema = z.object({ id: objectIdSchema, kind: z.enum(["category", "upiApp"]).default("category") });

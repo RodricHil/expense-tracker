@@ -57,7 +57,7 @@ export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return unauthorized();
 
-    const { type, name, last4 } = cardCreateSchema.parse(await parseJsonBody(req));
+    const { type, name, last4, network } = cardCreateSchema.parse(await parseJsonBody(req));
 
     await connectDB();
 
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
       return limitReached(type);
     }
 
-    const card = await Card.create({ ...cardOwnerFilter(session), type, name, last4 });
+    const card = await Card.create({ ...cardOwnerFilter(session), type, name, last4, ...(network !== undefined ? { network } : {}) });
 
     if (isOverCardLimit(await countCardsOfType(session, type))) {
       await Card.deleteOne({ _id: card._id, ...cardOwnerFilter(session) });
@@ -83,7 +83,7 @@ export async function PUT(req: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return unauthorized();
 
-    const { id, type, name, last4 } = cardUpdateSchema.parse(await parseJsonBody(req));
+    const { id, type, name, last4, network } = cardUpdateSchema.parse(await parseJsonBody(req));
 
     await connectDB();
 
@@ -98,7 +98,7 @@ export async function PUT(req: Request) {
 
     const updated = await Card.findOneAndUpdate(
       { _id: id, ...cardOwnerFilter(session) },
-      { type, name, last4 },
+      { type, name, last4, ...(network !== undefined ? { network } : {}) },
       { new: true }
     );
     if (!updated) return notFound();

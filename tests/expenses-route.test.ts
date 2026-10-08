@@ -37,6 +37,7 @@ function queryChain(rows: unknown[]): QueryChain {
 
 const expenseModel = {
   find: vi.fn(),
+  exists: vi.fn(),
   aggregate: vi.fn(),
   create: vi.fn(),
   findOneAndUpdate: vi.fn(),
@@ -55,10 +56,12 @@ vi.mock("next-auth/providers/google", () => ({
 vi.mock("@/lib/mongodb", () => ({ connectDB: () => connectDB() }));
 vi.mock("@/models/Expense", () => ({ default: expenseModel }));
 vi.mock("@/models/User", () => ({ default: { findOneAndUpdate: vi.fn() } }));
+const optionModel = { exists: vi.fn() };
+vi.mock("@/models/ExpenseOption", () => ({ default: optionModel }));
 const cardModel = { exists: vi.fn() };
 vi.mock("@/models/Card", () => ({ default: cardModel }));
 
-const { DELETE, GET, POST, PUT } = await import("@/app/api/expenses/route");
+const { DELETE, GET, POST, PUT, PATCH } = await import("@/app/api/expenses/route");
 
 /** The stable Google `sub` (ET-M1) and the legacy email key for the same user. */
 const OWNER_SUB = "108000000000000000001";
@@ -104,12 +107,13 @@ const validBody = {
   description: "Groceries",
   quantity: 1,
   mode: "cash",
-  type: "food",
+  type: `custom:${VICTIM_EXPENSE_ID}`,
   amount: "42.50",
 };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  optionModel.exists.mockResolvedValue({ _id: VICTIM_EXPENSE_ID });
   connectDB.mockResolvedValue(undefined);
   expenseModel.find.mockReturnValue(queryChain([]));
   expenseModel.aggregate.mockResolvedValue(emptyFacets());
@@ -246,6 +250,7 @@ describe("GET /api/expenses — §G.4 pagination and date filtering", () => {
     expenseModel.aggregate.mockResolvedValue([
       {
         allTime: [{ _id: null, amount: 999.994 }],
+        refunds: [{ _id: null, amount: 3.33 }],
         rangeTotal: [{ _id: null, amount: 42.5, count: 137 }],
         byType: [{ _id: "food", amount: 42.5 }],
         byMode: [{ _id: "cash", amount: 42.5 }],
@@ -270,6 +275,8 @@ describe("GET /api/expenses — §G.4 pagination and date filtering", () => {
       hasMore: true,
     });
     expect(body.summary.rangeTotal).toBe(42.5);
+    expect(body.summary.refundTotal).toBe(3.33);
+    expect(body.summary.netRangeTotal).toBe(39.17);
     expect(body.summary.allTimeTotal).toBe(999.99);
     expect(body.summary.byType).toEqual([{ type: "food", amount: 42.5 }]);
     expect(body.summary.byDay).toEqual([{ date: "2026-08-01", amount: 42.5 }]);
@@ -364,7 +371,7 @@ describe("PUT /api/expenses — ownership", () => {
     await PUT(jsonRequest("PUT", { ...validBody, id: VICTIM_EXPENSE_ID }));
 
     expect(expenseModel.findOneAndUpdate).toHaveBeenCalledWith(
-      { _id: VICTIM_EXPENSE_ID, ...ownerFilter() },
+      expect.objectContaining({ _id: VICTIM_EXPENSE_ID, ...ownerFilter() }),
       expect.any(Object),
       expect.objectContaining({ new: true })
     );
@@ -379,7 +386,7 @@ describe("PUT /api/expenses — ownership", () => {
 
     expect(res.status).toBe(404);
     expect(await res.json()).toEqual({ error: "Not Found" });
-    expect(expenseModel.findOneAndUpdate.mock.calls[0][0]).toEqual({
+    expect(expenseModel.findOneAndUpdate.mock.calls[0][0]).toMatchObject({
       _id: VICTIM_EXPENSE_ID,
       ...ownerFilter(OTHER_SUB, OTHER_EMAIL),
     });
@@ -551,13 +558,13 @@ describe("GET /api/expenses — payment filter", () => {
     await GET(new Request(`https://example.test/api/expenses?mode=card&cardId=${CARD_ID}`));
 
     expect(expenseModel.find).toHaveBeenCalledWith(
-      expect.objectContaining({ ...ownerFilter(), mode: "card", cardId: CARD_ID })
+      expect.objectContaining({ ...ownerFilter(), cardId: CARD_ID })
     );
     const pipeline = expenseModel.aggregate.mock.calls[0][0];
     expect(pipeline[0]).toEqual({ $match: ownerFilter() });
     const facets = pipeline[1].$facet;
     for (const key of ["rangeTotal", "byType", "byMode", "byDay"]) {
-      expect(facets[key][0].$match).toMatchObject({ mode: "card", cardId: CARD_ID });
+      expect(facets[key][0].$match).toMatchObject({ cardId: CARD_ID });
     }
     expect(JSON.stringify(facets.allTime)).not.toContain("card");
   });
@@ -588,5 +595,81 @@ describe("GET /api/expenses — payment filter", () => {
 
     expect(res.status).toBe(400);
     expect(expenseModel.create).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("refunds and personal categories — ownership and amount protection", () => {
+  it("rejects refunds without a session before querying", async () => {
+    getServerSession.mockResolvedValue(null);
+    expect((await PATCH(jsonRequest("PATCH", { id: VICTIM_EXPENSE_ID, amount: "10", date: "2026-10-09", source: "Store" }))).status).toBe(401);
+    expect(expenseModel.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+  it("records refunds with an owner and atomic remaining-amount condition", async () => {
+    signIn(); expenseModel.findOneAndUpdate.mockResolvedValue({});
+    const res = await PATCH(jsonRequest("PATCH", { id: VICTIM_EXPENSE_ID, amount: "10.25", date: "2026-10-09", source: "Store" }));
+    expect(res.status).toBe(200);
+    const [filter, update] = expenseModel.findOneAndUpdate.mock.calls[0];
+    expect(filter).toMatchObject({ _id: VICTIM_EXPENSE_ID, ...ownerFilter() });
+    expect(filter.$expr.$lte[0].$add).toContain(1025);
+    expect(update).toMatchObject({ $push: { refunds: { cents: 1025, source: "Store" } } });
+    expect(update).not.toHaveProperty("amount");
+  });
+  it("rejects an excessive refund when the conditional update matches nothing", async () => {
+    signIn(); expenseModel.findOneAndUpdate.mockResolvedValue(null);
+    expect((await PATCH(jsonRequest("PATCH", { id: VICTIM_EXPENSE_ID, amount: "100", date: "2026-10-09", source: "Store" }))).status).toBe(400);
+  });
+  it("rejects negative refunds and operator ids without a write", async () => {
+    signIn();
+    for (const body of [{ id: VICTIM_EXPENSE_ID, amount: "-10" }, { id: { $ne: null }, amount: "10" }]) {
+      expect((await PATCH(jsonRequest("PATCH", { ...body, date: "2026-10-09", source: "Store" }))).status).toBe(400);
+    }
+    expect(expenseModel.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+  it("will not use another user's personal category", async () => {
+    signIn(); optionModel.exists.mockResolvedValue(null);
+    const res = await POST(jsonRequest("POST", { ...validBody, type: `custom:${VICTIM_EXPENSE_ID}` }));
+    expect(res.status).toBe(400); expect(expenseModel.create).not.toHaveBeenCalled();
+    expect(optionModel.exists).toHaveBeenCalledWith({ _id: VICTIM_EXPENSE_ID, userId: OWNER_SUB, kind: "category", archived: { $ne: true } });
+  });
+  it("restricts RuPay UPI to the caller's saved RuPay credit cards", async () => {
+    signIn(); cardModel.exists.mockResolvedValue(null);
+    const res = await POST(jsonRequest("POST", { ...validBody, mode: "online", onlineMethod: "upi", upiSource: "rupay-credit", cardId: VICTIM_EXPENSE_ID }));
+    expect(res.status).toBe(400);
+    expect(cardModel.exists).toHaveBeenCalledWith({ _id: VICTIM_EXPENSE_ID, userId: OWNER_SUB, type: "credit", network: "rupay" });
+  });
+  it("prevents edits reducing a purchase below its recorded refunds", async () => {
+    signIn(); expenseModel.findOneAndUpdate.mockResolvedValue(null);
+    await PUT(jsonRequest("PUT", { ...validBody, id: VICTIM_EXPENSE_ID }));
+    expect(expenseModel.findOneAndUpdate.mock.calls[0][0].$expr).toEqual({ $lte: [{ $sum: "$refunds.cents" }, 4250] });
+  });
+});
+
+
+describe("archived categories on existing expenses", () => {
+  it("lets an expense retain its existing archived category", async () => {
+    signIn(); optionModel.exists.mockResolvedValue(null); expenseModel.exists.mockResolvedValue({ _id: VICTIM_EXPENSE_ID });
+    expenseModel.findOneAndUpdate.mockResolvedValue({ toObject: () => ({}), amount: "42.50" });
+    expect((await PUT(jsonRequest("PUT", { ...validBody, id: VICTIM_EXPENSE_ID, type: `custom:${VICTIM_EXPENSE_ID}` }))).status).toBe(200);
+    expect(expenseModel.exists).toHaveBeenCalledWith({ _id: VICTIM_EXPENSE_ID, ...ownerFilter(), type: `custom:${VICTIM_EXPENSE_ID}` });
+  });
+  it("does not let a different expense adopt an archived category", async () => {
+    signIn(); optionModel.exists.mockResolvedValue(null); expenseModel.exists.mockResolvedValue(null);
+    expect((await PUT(jsonRequest("PUT", { ...validBody, id: VICTIM_EXPENSE_ID, type: `custom:${VICTIM_EXPENSE_ID}` }))).status).toBe(400);
+    expect(expenseModel.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("legacy default categories", () => {
+  it("rejects defaults for new expenses", async () => {
+    signIn();
+    expect((await POST(jsonRequest("POST", { ...validBody, type: "food" }))).status).toBe(400);
+    expect(expenseModel.create).not.toHaveBeenCalled();
+  });
+  it("keeps a legacy category when editing its original expense", async () => {
+    signIn(); expenseModel.exists.mockResolvedValue({ _id: VICTIM_EXPENSE_ID });
+    expenseModel.findOneAndUpdate.mockResolvedValue({ toObject: () => ({}), amount: "42.50" });
+    expect((await PUT(jsonRequest("PUT", { ...validBody, id: VICTIM_EXPENSE_ID, type: "food" }))).status).toBe(200);
   });
 });

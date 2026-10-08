@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCircleCheck, faShieldHalved } from "@fortawesome/free-solid-svg-icons";
+import CustomSelect from "@/app/components/CustomSelect";
 import Modal from "@/app/components/Modal";
 import { CARD_TYPE_ICONS } from "@/app/components/PaymentMethod";
 import { useCards } from "@/app/components/CardsProvider";
@@ -29,7 +30,7 @@ export default function CardFormModal({ card, initialType = "credit", onClose }:
   const id = useId();
   const { cards, upsertCard } = useCards();
   const { showNotification } = useNotification();
-  const [values, setValues] = useState({ type: card?.type ?? initialType, name: card?.name ?? "", last4: card?.last4 ?? "" });
+  const [values, setValues] = useState({ type: card?.type ?? initialType, name: card?.name ?? "", last4: card?.last4 ?? "", network: card?.network ?? "" });
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
 
@@ -47,7 +48,7 @@ export default function CardFormModal({ card, initialType = "credit", onClose }:
       const res = await fetch("/api/cards", {
         method: card ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...(card ? { id: card.id } : {}), type: values.type, name: values.name.trim(), last4: values.last4 }),
+        body: JSON.stringify({ ...(card ? { id: card.id } : {}), type: values.type, name: values.name.trim(), last4: values.last4, network: values.network || null }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 409) { setErrors({ type: data.error ?? cardLimitMessage(values.type) }); return; }
@@ -75,6 +76,7 @@ export default function CardFormModal({ card, initialType = "credit", onClose }:
   return <Modal title={card ? "Edit card" : "Add card"} description="Used to label card payments on your expenses." onClose={onClose} busy={saving}>
     <form onSubmit={submit} noValidate>
       <fieldset disabled={saving} className="grid gap-5 border-0 p-0 m-0 min-w-0">
+        <div className="field"><span>Card network</span><CustomSelect label="Card network" value={values.network} onChange={(network) => setValues({ ...values, network })} disabled={saving} options={[{ value: "", label: "Unspecified" }, { value: "visa", label: "Visa" }, { value: "mastercard", label: "Mastercard" }, { value: "rupay", label: "RuPay" }]} /></div>
         <fieldset className="field border-0 p-0 m-0 min-w-0" aria-describedby={describe("type")}>
           <legend className="field-label mb-2">Card type</legend>
           <div className="choice-group">
