@@ -23,8 +23,8 @@ function isPublicPath(pathname: string): boolean {
 }
 
 export default withAuth(
-  function middleware(req) {
-    // If user is logged in and tries to go to login, redirect to dashboard
+function proxy(req) {
+      // If user is logged in and tries to go to login, redirect to dashboard
     if (req.nextUrl.pathname === "/login" && req.nextauth.token) {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
