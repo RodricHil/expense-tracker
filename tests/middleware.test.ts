@@ -41,8 +41,7 @@ vi.mock("next/server", () => ({
   },
 }));
 
-const middlewareModule = await import("@/middleware");
-
+const middlewareModule = await import("@/proxy");
 type MiddlewareRequest = {
   nextUrl: { pathname: string };
   url: string;
