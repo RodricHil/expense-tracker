@@ -119,7 +119,7 @@ export default function Navbar() {
         </nav>
         <div className="header-actions">
           <ThemeControl />
-          {status !== "unauthenticated" && <div className="hidden lg:block" style={{ width: 132 }}>{currencySelect("currency-select", 132)}</div>}
+          {status !== "unauthenticated" && <div className="hidden lg:block navbar-currency">{currencySelect("currency-select", 108)}</div>}
           <div className="hidden lg:block">{account}</div>
           <button ref={menuButton} type="button" className="btn btn-icon lg:hidden" aria-label={open ? "Close navigation" : "Open navigation"} aria-expanded={open} aria-controls="mobile-navigation" onClick={() => { setProfileOpen(false); setOpen(!open); }}>
             <FontAwesomeIcon icon={open ? faXmark : faBars} className="w-4 h-4" />

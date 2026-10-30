@@ -770,3 +770,6 @@ h3 { font-size: var(--fs-card); line-height: 1.45; font-weight: 600; letter-spac
 .investment-loss { color: var(--danger); }
 @media (min-width: 1024px) and (max-width: 1279px) { .nav-inner > nav .nav-link { padding-inline: 10px; gap: 6px; } }
 @media (max-width: 639px) { .investment-form-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; } .investment-record { padding: 16px; } .investment-record-heading { gap: 8px; } }
+
+.navbar-currency { width: 108px; flex-shrink: 0; }
+.navbar-currency .select-trigger { padding-inline: 12px; gap: 8px; }
