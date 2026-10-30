@@ -56,7 +56,7 @@ vi.mock("next-auth/providers/google", () => ({
 vi.mock("@/lib/mongodb", () => ({ connectDB: () => connectDB() }));
 vi.mock("@/models/Expense", () => ({ default: expenseModel }));
 vi.mock("@/models/User", () => ({ default: { findOneAndUpdate: vi.fn() } }));
-const optionModel = { exists: vi.fn() };
+const optionModel = { exists: vi.fn(), find: vi.fn() };
 vi.mock("@/models/ExpenseOption", () => ({ default: optionModel }));
 const cardModel = { exists: vi.fn() };
 vi.mock("@/models/Card", () => ({ default: cardModel }));
@@ -74,7 +74,7 @@ const OTHER_EMAIL = "other@example.test";
 const VICTIM_EXPENSE_ID = "507f1f77bcf86cd799439011";
 
 function signIn(id = OWNER_SUB, email = OWNER_EMAIL) {
-  getServerSession.mockResolvedValue({ user: { id, email, name: "Owner" } });
+  getServerSession.mockResolvedValue({ user: { id, email, legacyExpenseEmail: email, name: "Owner" } });
 }
 
 /** The filter every verb is expected to scope by (Round 5 transitional `$in`). */
@@ -97,7 +97,7 @@ function emptyFacets() {
 function jsonRequest(method: string, body: unknown) {
   return new Request("https://example.test/api/expenses", {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Origin: "https://example.test" },
     body: JSON.stringify(body),
   });
 }
@@ -113,6 +113,7 @@ const validBody = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  optionModel.find.mockReturnValue({ select: () => ({ lean: async () => [] }) });
   optionModel.exists.mockResolvedValue({ _id: VICTIM_EXPENSE_ID });
   connectDB.mockResolvedValue(undefined);
   expenseModel.find.mockReturnValue(queryChain([]));
@@ -475,7 +476,7 @@ describe("DELETE /api/expenses — ownership", () => {
     const res = await DELETE(
       new Request("https://example.test/api/expenses", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Origin: "https://example.test" },
         body: "{not json",
       })
     );
@@ -671,5 +672,45 @@ describe("legacy default categories", () => {
     signIn(); expenseModel.exists.mockResolvedValue({ _id: VICTIM_EXPENSE_ID });
     expenseModel.findOneAndUpdate.mockResolvedValue({ toObject: () => ({}), amount: "42.50" });
     expect((await PUT(jsonRequest("PUT", { ...validBody, id: VICTIM_EXPENSE_ID, type: "food" }))).status).toBe(200);
+  });
+});
+
+
+describe("GET /api/expenses — shared category filter", () => {
+  it("applies the same category, date and payment conditions to rows, counts, totals and refunds", async () => {
+    signIn();
+    await GET(new Request("https://example.test/api/expenses?category=food&mode=cash&from=2026-10-01&to=2026-10-30"));
+    const filter = expenseModel.find.mock.calls[0][0];
+    expect(filter).toMatchObject({ ...ownerFilter(), type: "food", mode: "cash" });
+    const facets = expenseModel.aggregate.mock.calls[0][0][1].$facet;
+    for (const key of ["rangeTotal", "refunds", "byType", "byMode", "byDay"]) {
+      expect(facets[key][0].$match).toEqual({ type: "food", mode: "cash", date: filter.date });
+    }
+  });
+});
+
+describe("GET /api/expenses — combined legacy and personal category", () => {
+  it("uses owner-scoped mappings for both rows and summary facets", async () => {
+    signIn();
+    optionModel.find.mockReturnValue({ select: () => ({ lean: async () => [{ _id: VICTIM_EXPENSE_ID, kind: "category", name: "Bills", legacyType: "bills" }] }) });
+    await GET(new Request("https://example.test/api/expenses?category=bills&from=2026-01-01&to=2026-10-30"));
+    expect(optionModel.find).toHaveBeenCalledWith({ userId: OWNER_SUB, kind: "category" });
+    const type = { $in: ["bills", `custom:${VICTIM_EXPENSE_ID}`] };
+    expect(expenseModel.find.mock.calls[0][0]).toMatchObject({ ...ownerFilter(), type });
+    const facets = expenseModel.aggregate.mock.calls[0][0][1].$facet;
+    for (const key of ["rangeTotal", "refunds", "byType", "byMode", "byDay"]) expect(facets[key][0].$match.type).toEqual(type);
+  });
+});
+
+describe("expense ownership without an email fallback", () => {
+  it("does not authorize legacy rows from session email alone", async () => {
+    getServerSession.mockResolvedValue({ user: { id: OWNER_SUB, email: OTHER_EMAIL } });
+    await GET(new Request("https://example.test/api/expenses"));
+    expect(expenseModel.find.mock.calls[0][0].userId).toEqual({ $in: [OWNER_SUB] });
+  });
+  it("rejects foreign-origin JSON writes without a database mutation", async () => {
+    signIn();
+    const response = await POST(new Request("https://example.test/api/expenses", { method: "POST", headers: { Origin: "https://attacker.test", "Content-Type": "application/json" }, body: JSON.stringify(validBody) }));
+    expect(response.status).toBe(403); expect(expenseModel.create).not.toHaveBeenCalled();
   });
 });

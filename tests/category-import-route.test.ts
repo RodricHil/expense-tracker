@@ -9,18 +9,18 @@ vi.mock("@/models/ExpenseOption", () => ({ default: { countDocuments: count, fin
 import { POST } from "@/app/api/expense-options/import/route";
 import { categories } from "@/lib/expense-options";
 beforeEach(() => {
-  vi.clearAllMocks(); session.mockResolvedValue({ user: { email: "owner@example.test" } });
+  vi.clearAllMocks(); session.mockResolvedValue({ user: { id: "owner-id", email: "owner@example.test" } });
   count.mockResolvedValue(0); exists.mockResolvedValue(true); find.mockResolvedValue(null); update.mockResolvedValue({});
 });
 describe("private legacy category import", () => {
   it("requires authentication", async () => {
-    session.mockResolvedValue(null); expect((await POST()).status).toBe(401); expect(update).not.toHaveBeenCalled();
+    session.mockResolvedValue(null); expect((await POST(new Request("https://example.test/api/expense-options/import", { method: "POST", headers: { Origin: "https://example.test" } }))).status).toBe(401); expect(update).not.toHaveBeenCalled();
   });
   it("does not give new accounts default categories", async () => {
-    exists.mockResolvedValue(null); expect(await (await POST()).json()).toEqual({ imported: false }); expect(update).not.toHaveBeenCalled();
+    exists.mockResolvedValue(null); expect(await (await POST(new Request("https://example.test/api/expense-options/import", { method: "POST", headers: { Origin: "https://example.test" } }))).json()).toEqual({ imported: false }); expect(update).not.toHaveBeenCalled();
   });
   it("imports separate owned records without changing expenses", async () => {
-    expect((await POST()).status).toBe(200);
+    expect((await POST(new Request("https://example.test/api/expense-options/import", { method: "POST", headers: { Origin: "https://example.test" } }))).status).toBe(200);
     expect(exists).toHaveBeenCalledWith({ userId: "owner-id", type: { $in: categories } });
     expect(update).toHaveBeenCalledTimes(categories.length);
     for (const [filter, change] of update.mock.calls) {
@@ -31,10 +31,10 @@ describe("private legacy category import", () => {
   });
   it("preserves renamed and deleted imported categories", async () => {
     find.mockResolvedValue({ name: "Renamed", archived: true });
-    expect((await POST()).status).toBe(200); expect(update).not.toHaveBeenCalled();
+    expect((await POST(new Request("https://example.test/api/expense-options/import", { method: "POST", headers: { Origin: "https://example.test" } }))).status).toBe(200); expect(update).not.toHaveBeenCalled();
   });
   it("skips completed imports on future loads", async () => {
-    count.mockResolvedValue(categories.length); expect(await (await POST()).json()).toEqual({ imported: false });
+    count.mockResolvedValue(categories.length); expect(await (await POST(new Request("https://example.test/api/expense-options/import", { method: "POST", headers: { Origin: "https://example.test" } }))).json()).toEqual({ imported: false });
     expect(exists).not.toHaveBeenCalled(); expect(update).not.toHaveBeenCalled();
   });
 });

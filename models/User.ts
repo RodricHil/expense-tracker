@@ -29,6 +29,8 @@ const UserSchema = new mongoose.Schema(
       sparse: true,
       index: true,
     },
+    // null means legacy rows were migrated or this is a new account.
+    legacyExpenseEmail: { type: String, required: false },
     image: {
       type: String,
       default: null,

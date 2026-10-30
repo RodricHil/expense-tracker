@@ -401,3 +401,13 @@ describe("additional payment details", () => {
     expect(expenseCreateSchema.safeParse({ ...validExpense, type: { $ne: null } }).success).toBe(false);
   });
 });
+
+describe("transaction category filter", () => {
+  it("accepts built-in and personal categories", () => {
+    expect(parseExpenseQuery("https://example.test/api/expenses?category=food").category).toBe("food");
+    expect(parseExpenseQuery("https://example.test/api/expenses?category=custom:507f1f77bcf86cd799439011").category).toBe("custom:507f1f77bcf86cd799439011");
+  });
+  it("rejects invalid categories", () => {
+    expect(() => parseExpenseQuery("https://example.test/api/expenses?category=invalid")).toThrow();
+  });
+});

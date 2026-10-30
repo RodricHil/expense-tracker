@@ -95,6 +95,7 @@ describe("protected paths — default deny", () => {
     "/dashboard/settings",
     "/add-expenses",
     "/analytics",
+    "/investments",
     "/settings",
     // NOTE: these two /api paths exercise the POLICY FUNCTION only. Next.js
     // never runs the middleware for them, because `config.matcher` below does
@@ -153,6 +154,7 @@ describe("matcher coverage", () => {
         "/dashboard/:path*",
         "/add-expenses/:path*",
         "/analytics/:path*",
+        "/investments/:path*",
         "/settings/:path*",
         "/login",
       ])

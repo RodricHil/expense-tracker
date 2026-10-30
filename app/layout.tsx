@@ -60,7 +60,7 @@ async function resolveSession(): Promise<Session | null | undefined> {
 async function resolveUserData(session: Session | null | undefined) {
   if (!session?.user?.email) return { currency: null, cards: null };
   const [currency, cards] = await Promise.allSettled([
-    getPreferredCurrency(session.user.email),
+    getPreferredCurrency(session.user.id),
     listCards(session),
   ]);
   for (const result of [currency, cards]) if (result.status === "rejected") unstable_rethrow(result.reason);

@@ -41,13 +41,13 @@ const OWNER_EMAIL = "owner@example.test";
 const CARD_ID = "65a1b2c3d4e5f60718293a4b";
 
 function signIn() {
-  getServerSession.mockResolvedValue({ user: { id: OWNER_SUB, email: OWNER_EMAIL, name: "Owner" } });
+  getServerSession.mockResolvedValue({ user: { id: OWNER_SUB, legacyExpenseEmail: OWNER_EMAIL, email: OWNER_EMAIL, name: "Owner" } });
 }
 
 function jsonRequest(method: string, body: unknown) {
   return new Request("https://example.test/api/cards", {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Origin: "https://example.test" },
     body: JSON.stringify(body),
   });
 }

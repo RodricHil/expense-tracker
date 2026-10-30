@@ -7,7 +7,7 @@ vi.mock("@/lib/expenses", () => ({ ownerId: () => "owner-id" }));
 vi.mock("@/models/ExpenseOption", () => ({ default: { find, findOneAndUpdate: update } }));
 import { GET, POST, PUT, DELETE } from "@/app/api/expense-options/route";
 const id = "507f1f77bcf86cd799439011";
-const request = (method: string, body: unknown) => new Request("https://example.test/api/expense-options", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+const request = (method: string, body: unknown) => new Request("https://example.test/api/expense-options", { method, headers: { "Content-Type": "application/json", Origin: "https://example.test" }, body: JSON.stringify(body) });
 beforeEach(() => { vi.clearAllMocks(); getSession.mockResolvedValue({ user: { id: "owner-id", email: "owner@example.test" } }); });
 describe("personal category management", () => {
   it("rejects every unauthenticated operation", async () => {

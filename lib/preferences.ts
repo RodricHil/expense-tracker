@@ -8,9 +8,10 @@ export const DEFAULT_CURRENCY = "₹";
  * Read by `/api/user/currency` and by the root layout, which seeds it into the
  * client so amounts never render in the wrong currency first.
  */
-export async function getPreferredCurrency(email: string): Promise<string | null> {
+export async function getPreferredCurrency(subject: string): Promise<string | null> {
+  if (!subject) return null;
   await connectDB();
-  const user = await User.findOne({ email }).lean<{ preferredCurrency?: string }>();
+  const user = await User.findOne({ googleId: subject }).lean<{ preferredCurrency?: string }>();
   if (!user) return null;
   return user.preferredCurrency || DEFAULT_CURRENCY;
 }

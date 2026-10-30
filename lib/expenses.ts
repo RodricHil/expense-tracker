@@ -1,6 +1,8 @@
 import type { PipelineStage } from "mongoose";
 import type { Session } from "next-auth";
 import { connectDB } from "@/lib/mongodb";
+import ExpenseOption from "@/models/ExpenseOption";
+import { categoryFilterTypes } from "@/lib/category-filter";
 import Expense from "@/models/Expense";
 import type { ExpenseQuery } from "@/lib/validation";
 
@@ -30,32 +32,14 @@ import type { ExpenseQuery } from "@/lib/validation";
  * every NEW expense is written with the stable id.
  */
 export function ownerId(session: Session): string {
-  // The email fallback only fires for a session minted before `token.id`
-  // existed. It keeps such a session writing under the same key it can already
-  // read, rather than orphaning the row under `undefined`.
-  return session.user?.id ?? (session.user?.email as string);
+  // Old sessions must reauthenticate rather than write under a mutable email.
+  if (!session.user?.id) throw new Error("Sign in again to verify your identity.");
+  return session.user.id;
 }
 
-/**
- * TRANSITIONAL — remove only after the migration has been applied AND verified.
- *
- * Every expense written before Round 5 stores the owner's EMAIL in `userId`.
- * Switching reads to the stable id alone would make all of that data invisible
- * to its owner, so reads, updates and deletes match either key.
- *
- * The removal procedure, in order:
- *   1. `node --env-file=.env.local scripts/migrate-userid.mjs`          (dry run)
- *   2. `node --env-file=.env.local scripts/migrate-userid.mjs --apply`  (writes)
- *   3. Verify `db.expenses.countDocuments({ userId: { $regex: "@" } })` is 0
- *      and that the "unmapped" count printed by the script is 0.
- *   4. Then, and only then, replace every `ownerFilter(session)` call with
- *      `{ userId: ownerId(session) }` and delete this function.
- *
- * Matching on a two-element `$in` still uses the `userId` index, so this costs
- * nothing measurable in the meantime.
- */
+/** Legacy access is derived server-side from the subject-bound User record. */
 export function ownerFilter(session: Session): { userId: { $in: string[] } } {
-  const ids = [session.user?.id, session.user?.email].filter(
+  const ids = [session.user?.id, session.user?.legacyExpenseEmail].filter(
     (value): value is string => typeof value === "string" && value.length > 0
   );
 
@@ -144,11 +128,14 @@ export async function loadExpensePage(
   session: Session,
   query: Omit<ExpenseQuery, "mode" | "cardId"> & Partial<Pick<ExpenseQuery, "mode" | "cardId">>
 ): Promise<ExpensePage> {
-  const { page, limit, from, to, mode = null, cardId = null } = query;
+  const { page, limit, from, to, mode = null, cardId = null, category } = query;
 
   await connectDB();
 
   const owner = ownerFilter(session);
+  const categoryOptions = category ? await ExpenseOption.find({ userId: ownerId(session), kind: "category" }).select("_id kind name legacyType").lean() : [];
+  const categoryTypes = category ? categoryFilterTypes(category, categoryOptions.map((option) => ({ _id: String(option._id), kind: String(option.kind), name: String(option.name), legacyType: option.legacyType ? String(option.legacyType) : undefined }))) : [];
+
 
   // Built from parsed `Date` objects only — a client cannot inject an operator
   // here, because zod already rejected anything that is not a date.
@@ -165,6 +152,7 @@ export async function loadExpensePage(
     ...dateFilter,
     ...(mode && !cardId ? { mode } : {}),
     ...(cardId ? { cardId } : {}),
+    ...(category ? { type: categoryTypes.length === 1 ? category : { $in: categoryTypes } } : {}),
   };
 
   // `$match` on the owner FIRST so every facet below inherits the ownership

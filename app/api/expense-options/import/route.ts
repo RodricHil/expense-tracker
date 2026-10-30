@@ -1,3 +1,4 @@
+import { assertMutationRequest } from "@/lib/request-security";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
@@ -8,10 +9,11 @@ import ExpenseOption from "@/models/ExpenseOption";
 import { handleRouteError, unauthorized } from "@/lib/validation";
 
 /** Restore the old list only for accounts that used it. Never rewrite expenses. */
-export async function POST() {
+export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return unauthorized();
+    if (!session?.user?.email || !session.user.id) return unauthorized();
+    assertMutationRequest(req, false);
     await connectDB();
     const userId = ownerId(session);
     const legacyFilter = { userId, kind: "category", legacyType: { $in: categories } };

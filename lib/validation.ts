@@ -1,3 +1,5 @@
+import { assertMutationRequest, RequestSecurityError } from "@/lib/request-security";
+import { isAllowedRange, MAX_RANGE_DAYS } from "@/lib/date-range";
 import mongoose from "mongoose";
 import { z } from "zod";
 import { needsCard, detailsPayload, type ExpenseDetails } from "@/lib/expense-details";
@@ -206,6 +208,7 @@ export const expenseQuerySchema = z
     to: dateSchema.optional(),
     mode: z.enum(EXPENSE_MODES).optional(),
     cardId: objectIdSchema.optional(),
+    category: z.union([z.enum(EXPENSE_TYPES), z.string().regex(/^custom:[0-9a-f]{24}$/)]).optional(),
   })
   .transform((query) => ({
     page: query.page ?? 1,
@@ -215,15 +218,17 @@ export const expenseQuerySchema = z
     // A specific card only narrows card payments, so it implies mode=card.
     mode: query.cardId ? ("card" as const) : (query.mode ?? null),
     cardId: query.cardId ?? null,
+    ...(query.category ? { category: query.category } : {}),
   }))
   .refine((query) => !query.from || !query.to || query.from <= query.to, {
     message: "`from` must not be after `to`",
-  });
+  })
+  .refine((query) => !query.from || !query.to || isAllowedRange(query.from, query.to), { message: `Date range must not exceed ${MAX_RANGE_DAYS} days` });
 
 export type ExpenseQuery = z.infer<typeof expenseQuerySchema>;
 
 /** The only query keys the read path understands; anything else is ignored. */
-const EXPENSE_QUERY_KEYS = ["page", "limit", "from", "to", "mode", "cardId"] as const;
+const EXPENSE_QUERY_KEYS = ["page", "limit", "from", "to", "mode", "cardId", "category"] as const;
 
 /**
  * Pull the recognised query parameters off a request URL and validate them.
@@ -315,6 +320,7 @@ export const notFound = () =>
  * instead of an unhandled 500.
  */
 export async function parseJsonBody(req: Request): Promise<unknown> {
+  assertMutationRequest(req);
   try {
     return await req.json();
   } catch {
@@ -328,6 +334,7 @@ export async function parseJsonBody(req: Request): Promise<unknown> {
  * leaks no stack trace and no Mongoose/driver message.
  */
 export function handleRouteError(error: unknown): Response {
+  if (error instanceof RequestSecurityError) return Response.json({ error: error.message }, { status: error.status });
   if (error instanceof z.ZodError) {
     return Response.json(
       {

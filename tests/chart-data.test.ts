@@ -28,3 +28,19 @@ describe("spending charts", () => {
     expect(result[0].amount).toBe(50);
   });
 });
+
+describe("wide chart ranges", () => {
+  it("rejects a range that could freeze the browser", () => {
+    expect(() => buildSpendingSeries([], date("0001-01-01"), date("9999-12-31"), "Daily")).toThrow(RangeError);
+  });
+  it("groups long daily ranges by week without dropping endpoint purchases", () => {
+    const rows = buildSpendingSeries([{ date: "2020-01-01", amount: 10 }, { date: "2029-12-31", amount: 20 }], date("2020-01-01"), date("2029-12-31"), "Daily");
+    expect(rows.length).toBeLessThanOrEqual(732);
+    expect(rows.reduce((sum, row) => sum + row.amount, 0)).toBe(30);
+    expect(rows[0].label).toContain("Week of");
+  });
+  it("generates monthly and yearly periods directly across leap years", () => {
+    expect(buildSpendingSeries([], date("2020-01-01"), date("2029-12-31"), "Monthly")).toHaveLength(120);
+    expect(buildSpendingSeries([], date("2020-01-01"), date("2029-12-31"), "Yearly")).toHaveLength(10);
+  });
+});

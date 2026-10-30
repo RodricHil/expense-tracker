@@ -9,10 +9,15 @@ import DateRangeFilter from "@/app/components/DateRangeFilter";
 import { CategoryLabel } from "@/app/components/ExpenseMetadata";
 import CategoryBreakdown from "@/app/components/CategoryBreakdown";
 import { useCurrency } from "@/app/components/CurrencyProvider";
-import { formatAmount, inclusiveDays } from "@/lib/format";
-import { buildSpendingSeries, type Timeframe } from "@/lib/chart-data";
+import { formatAmount, formatDateRange, inclusiveDays } from "@/lib/format";
+import { buildSpendingSeries, chartGrouping, type Timeframe } from "@/lib/chart-data";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCalendarCheck, faCalendarDay, faChartColumn, faCircleExclamation, faCreditCard, faLayerGroup, faPlus, faRotateRight, faWallet } from "@fortawesome/free-solid-svg-icons";
+import { faCalendarCheck, faCalendarDay, faChartColumn, faCircleExclamation, faCreditCard, faLayerGroup, faPlus, faRotateLeft, faRotateRight, faWallet } from "@fortawesome/free-solid-svg-icons";
+import { categoryFilterChoices } from "@/lib/category-filter";
+import { defaultFilterRange } from "@/lib/date-range";
+import CustomSelect from "@/app/components/CustomSelect";
+import DailyAverageInfo from "@/app/components/DailyAverageInfo";
+import { useExpenseOptions } from "@/app/components/ExpenseOptionsProvider";
 import PaymentBreakdown from "@/app/components/PaymentBreakdown";
 import { StatSkeletons } from "@/app/components/Skeleton";
 import PaymentFilter, { ALL_PAYMENTS, appendPaymentFilter, describePaymentFilter, isSamePaymentFilter, type PaymentFilterValue } from "@/app/components/PaymentFilter";
@@ -48,6 +53,17 @@ export default function AnalyticsClientPage({ initialRange, initialSummary }: Pr
   const { currency } = useCurrency();
 
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilterValue>(ALL_PAYMENTS);
+  const [dateFilterDirty, setDateFilterDirty] = useState(false);
+  const [filterResetKey, setFilterResetKey] = useState(0);
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const { options: expenseOptions } = useExpenseOptions();
+  const categoryChoices = categoryFilterChoices(expenseOptions);
+  const resetFilters = () => {
+    setLoading(true); setError(""); setCategoryFilter(""); setPaymentFilter(ALL_PAYMENTS);
+    setDateRange(defaultFilterRange());
+    setDateFilterDirty(false);
+    setFilterResetKey((key) => key + 1); setRetry((value) => value + 1);
+  };
   const { cards } = useCards();
   const filterLabel = describePaymentFilter(paymentFilter, cards);
   const changePaymentFilter = (filter: PaymentFilterValue) => {
@@ -70,6 +86,7 @@ export default function AnalyticsClientPage({ initialRange, initialSummary }: Pr
     async function load() {
       try {
         const params = appendPaymentFilter(new URLSearchParams({ page: "1", limit: "1", from: dateRange.startDate.toISOString(), to: dateRange.endDate.toISOString() }), paymentFilter);
+        if (categoryFilter) params.set("category", categoryFilter);
         const res = await fetch(`/api/expenses?${params}`, { signal: controller.signal });
         if (!res.ok) throw new Error("Unable to load analytics");
         const body = await res.json();
@@ -82,10 +99,14 @@ export default function AnalyticsClientPage({ initialRange, initialSummary }: Pr
     }
     void load();
     return () => controller.abort();
-  }, [dateRange, paymentFilter, retry, expenseRevision]);
+  }, [dateRange, paymentFilter, categoryFilter, retry, expenseRevision]);
 
-  const chartData = useMemo(() => buildSpendingSeries(summary.byDay, dateRange.startDate, dateRange.endDate, timeframe), [summary.byDay, dateRange, timeframe]);
+  const chartTimeframe = chartGrouping(dateRange.startDate, dateRange.endDate, timeframe);
+  const chartData = useMemo(() => buildSpendingSeries(summary.byDay, dateRange.startDate, dateRange.endDate, chartTimeframe), [summary.byDay, dateRange, chartTimeframe]);
   const total = summary.rangeTotal;
+  const refunded = summary.refundTotal ?? 0;
+  const refundShare = total > 0 ? Math.min(100, Math.max(0, refunded / total * 100)) : 0;
+  const netSpending = summary.netRangeTotal ?? total - refunded;
   const days = inclusiveDays(dateRange.startDate, dateRange.endDate);
   const average = total / days;
   const topCategory = [...summary.byType].sort((a, b) => b.amount - a.amount)[0];
@@ -96,9 +117,13 @@ export default function AnalyticsClientPage({ initialRange, initialSummary }: Pr
   return <>
     <Navbar />
     <main id="main-content" tabIndex={-1} className="app-shell">
-      <div className="page-heading"><div><h1>Analytics</h1><p>{dateRange.label}{filterLabel && ` · ${filterLabel}`}</p></div><button type="button" className="btn btn-primary" onClick={openAddExpense}><FontAwesomeIcon icon={faPlus} />Add expense</button></div>
+      <div className="page-heading"><div><h1>Analytics</h1><p>Understand your spending and refunds</p></div><button type="button" className="btn btn-primary" onClick={openAddExpense}><FontAwesomeIcon icon={faPlus} />Add expense</button></div>
       <div className="stack">
-        <DateRangeFilter onRangeChange={changeRange}><PaymentFilter value={paymentFilter} onChange={changePaymentFilter} /></DateRangeFilter>
+        <DateRangeFilter onDirtyChange={setDateFilterDirty} compact key={filterResetKey} rangeLabel={formatDateRange(dateRange.startDate, dateRange.endDate)} onRangeChange={changeRange}>
+          <PaymentFilter compact value={paymentFilter} onChange={changePaymentFilter} />
+          <div className="filter-field"><span className="filter-label">Category</span><CustomSelect label="Category" value={categoryFilter} options={categoryChoices} onChange={(value) => { if (value === categoryFilter) return; setLoading(true); setError(""); setCategoryFilter(value); }} /></div>
+          <button type="button" className="btn filter-reset" disabled={!categoryFilter && !paymentFilter.mode && !dateFilterDirty} onClick={resetFilters}><FontAwesomeIcon icon={faRotateRight} aria-hidden="true" />Reset filters</button>
+        </DateRangeFilter>
         <p role="status" className="sr-only">{loading ? "Updating analytics…" : ""}</p>
         {error && <div className="error-state" role="alert"><p><FontAwesomeIcon icon={faCircleExclamation} aria-hidden="true" />{error}</p><button type="button" className="btn btn-sm" onClick={() => { setLoading(true); setError(""); setRetry((n) => n + 1); }}><FontAwesomeIcon icon={faRotateRight} />Retry</button></div>}
         {!error && firstLoad && <><StatSkeletons /><section className="panel" style={{ height: 420 }} aria-hidden="true" /></>}
@@ -109,12 +134,12 @@ export default function AnalyticsClientPage({ initialRange, initialSummary }: Pr
             <div className="stat"><span className="stat-icon"><FontAwesomeIcon icon={faCalendarCheck} aria-hidden="true" /></span><p className="stat-label">Days with expenses</p><p className="stat-value">{summary.byDay.length}<span className="unit">/ {days}</span></p></div>
             <div className="stat"><span className="stat-icon"><FontAwesomeIcon icon={faLayerGroup} aria-hidden="true" /></span><p className="stat-label">Top category</p><p className="stat-value capitalize" style={{ fontSize: "var(--fs-section)" }}>{topCategory ? <CategoryLabel value={topCategory.type} /> : "—"}</p>{topCategory && <p className="stat-hint">{currency} {formatAmount(topCategory.amount)}</p>}</div>
           </div>
-          <p className="text-sm muted">Refunds on purchases in this range: {currency} {formatAmount(summary.refundTotal ?? 0)} · Net spending: {currency} {formatAmount(summary.netRangeTotal ?? total)} · Net daily average: {currency} {formatAmount((summary.netRangeTotal ?? total) / days)}. Charts show original purchase amounts.</p>
+          <p className="text-sm muted">Charts show original purchase amounts.{chartTimeframe !== timeframe && " Wide ranges are grouped weekly to keep the chart readable."}</p>
           <section className="panel trend-panel" aria-labelledby="chart-heading">
             <div className="panel-heading"><h2 id="chart-heading"><FontAwesomeIcon icon={faChartColumn} className="heading-icon" aria-hidden="true" />Spending over time</h2><div className="segmented" role="group" aria-label="Chart grouping">{timeframeOptions.map((option) => <button key={option} type="button" className="segment" aria-pressed={timeframe === option} onClick={() => setTimeframe(option)}>{option}</button>)}</div></div>
             <div className="flex justify-between gap-4 flex-wrap text-xs muted"><span className="chart-legend"><span className="legend-swatch" style={{ background: "var(--chart-1)" }} aria-hidden="true" />Expenses ({currency})</span>{peak && total > 0 && <span>Highest: <span className="text-secondary font-medium">{peak.label} · {currency} {formatAmount(peak.amount)}</span></span>}</div>
             {!summary.byDay.length ? <div className="empty-state"><span className="empty-state-icon"><FontAwesomeIcon icon={faChartColumn} aria-hidden="true" /></span><strong>{filterLabel ? `No ${filterLabel} payments in this range` : "No spending in this range"}</strong><p>{filterLabel ? "Try another payment filter or a wider date range." : "Pick another range or add an expense to see trends."}</p><button type="button" className="btn" onClick={openAddExpense}><FontAwesomeIcon icon={faPlus} />Add an expense</button></div> : <>
-              <div className="chart" aria-label={`${timeframe} spending in ${currency}. Use arrow keys on the chart to explore values.`}>
+              <div className="chart" aria-label={`${chartTimeframe} spending in ${currency}. Use arrow keys on the chart to explore values.`}>
                 {isMounted && <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }} accessibilityLayer>
                     <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 5" />
@@ -128,9 +153,19 @@ export default function AnalyticsClientPage({ initialRange, initialSummary }: Pr
 
             </>}
           </section>
-          <div className="grid gap-[var(--space-section)] lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+          <div className="analytics-breakdowns grid gap-[var(--space-section)] lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
             <section className="panel" aria-labelledby="category-heading"><div className="panel-heading"><h2 id="category-heading"><FontAwesomeIcon icon={faLayerGroup} className="heading-icon" aria-hidden="true" />By category</h2><span className="panel-meta">Share of total</span></div><CategoryBreakdown categories={summary.byType} total={total} currency={currency} /></section>
+            <div className="stack analytics-payment-column">
             <section className="panel" aria-labelledby="payment-heading"><div className="panel-heading"><h2 id="payment-heading"><FontAwesomeIcon icon={faCreditCard} className="heading-icon" aria-hidden="true" />Payment methods</h2></div><PaymentBreakdown byMode={summary.byMode} total={total} currency={currency} /></section>
+              <section className="panel refund-panel" aria-labelledby="refund-heading">
+                <div className="panel-heading"><h2 id="refund-heading"><FontAwesomeIcon icon={faRotateLeft} className="heading-icon" aria-hidden="true" />Refunds</h2></div>
+                <div className="refund-content">
+                  <div><p className="refund-amount">{currency} {formatAmount(refunded)}</p><p className="muted text-sm">{refunded > 0 ? "Refunded on purchases in this range" : "No refunds on purchases in this range"}</p></div>
+                  <div className="grid gap-2"><p className="text-sm muted">{refundShare.toFixed(1)}% of original spending</p><div className="progress-track" aria-hidden="true"><div className="progress-fill" style={{ width: `${refundShare}%` }} /></div></div>
+                  <dl className="grid gap-2 text-sm"><div className="flex justify-between flex-wrap gap-2"><dt className="muted">Net spending</dt><dd className="money">{currency} {formatAmount(netSpending)}</dd></div><div className="flex justify-between flex-wrap gap-2"><dt className="muted">Net daily average <DailyAverageInfo /></dt><dd className="money">{currency} {formatAmount(netSpending / days)}</dd></div></dl>
+                </div>
+              </section>
+            </div>
           </div>
         </div>}
       </div>

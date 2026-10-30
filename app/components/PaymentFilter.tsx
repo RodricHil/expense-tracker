@@ -33,9 +33,11 @@ export function describePaymentFilter(filter: PaymentFilterValue, cards: SavedCa
  * saved card. Selection is shown by weight, border and background plus
  * `aria-pressed`, not by colour alone.
  */
-export default function PaymentFilter({ value, onChange }: { value: PaymentFilterValue; onChange: (value: PaymentFilterValue) => void }) {
+export default function PaymentFilter({ value, onChange, compact = false }: { value: PaymentFilterValue; onChange: (value: PaymentFilterValue) => void; compact?: boolean }) {
   const { cards } = useCards();
   const sortedCards = [...cards].sort((a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name));
+
+  if (compact) return <div className="filter-field"><span className="filter-label">Payment</span><CustomSelect label="Payment method" value={value.mode ?? ""} onChange={(mode) => onChange({ mode: (mode || null) as PaymentFilterValue["mode"], cardId: null })} options={[{ value: "", label: "All payment methods" }, ...PAYMENT_METHODS.map((mode) => ({ value: mode, label: PAYMENT_METHOD_LABELS[mode] }))]} />{value.mode === "card" && sortedCards.length > 0 && <div className="filter-card-choice"><span className="filter-label">Saved card</span><CustomSelect label="Saved card" value={value.cardId ?? ""} onChange={(cardId) => onChange({ mode: "card", cardId: cardId || null })} options={[{ value: "", label: "All cards" }, ...sortedCards.map((card) => ({ value: card.id, label: `${cardLabel(card)} · ${CARD_TYPE_LABELS[card.type]}` }))]} /></div>}</div>;
 
   return <div className="flex items-center justify-between gap-3 flex-wrap">
     <span className="text-secondary font-medium flex items-center gap-2"><FontAwesomeIcon icon={faWallet} className="h-3.5 w-3.5 text-stone-500" aria-hidden="true" />Payment</span>

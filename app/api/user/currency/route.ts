@@ -14,11 +14,11 @@ import {
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    if (!session?.user?.email || !session.user.id) {
       return unauthorized();
     }
 
-    const currency = await getPreferredCurrency(session.user.email);
+    const currency = await getPreferredCurrency(session.user.id);
 
     if (!currency) {
       return notFound();
@@ -33,7 +33,7 @@ export async function GET() {
 export async function PUT(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    if (!session?.user?.email || !session.user.id) {
       return unauthorized();
     }
 
@@ -41,7 +41,7 @@ export async function PUT(req: Request) {
 
     await connectDB();
     const user = await User.findOneAndUpdate(
-      { email: session.user.email },
+      { googleId: session.user.id },
       { preferredCurrency: currency },
       { new: true }
     ).lean();

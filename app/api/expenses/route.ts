@@ -50,7 +50,7 @@ export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.email) {
+    if (!session?.user?.email || !session.user.id) {
       return unauthorized();
     }
 
@@ -106,7 +106,7 @@ export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.email) {
+    if (!session?.user?.email || !session.user.id) {
       return unauthorized();
     }
 
@@ -124,7 +124,7 @@ export async function DELETE(req: Request) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.email) {
+    if (!session?.user?.email || !session.user.id) {
       return unauthorized();
     }
 
@@ -153,7 +153,7 @@ export async function PUT(req: Request) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.email) {
+    if (!session?.user?.email || !session.user.id) {
       return unauthorized();
     }
 
@@ -210,7 +210,7 @@ async function assertCategory(session: Parameters<typeof ownerId>[0], type: stri
 export async function PATCH(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return unauthorized();
+    if (!session?.user?.email || !session.user.id) return unauthorized();
     const { id, amount, date, source } = refundSchema.parse(await parseJsonBody(req));
     const cents = Math.round(Number(amount) * 100);
     if (!Number.isSafeInteger(cents)) throw new HttpError(400, "Refund amount is too large");

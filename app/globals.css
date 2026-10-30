@@ -385,13 +385,17 @@ h3 { font-size: var(--fs-card); line-height: 1.45; font-weight: 600; letter-spac
 
 /* ---------- Saved cards ---------- */
 .card-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
-.saved-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 14px 12px 14px 16px; border: 1px solid var(--border); background: var(--surface); border-left: 4px solid var(--card-accent); }
+.saved-card { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 12px; padding: 14px 12px 14px 16px; border: 1px solid var(--border); background: var(--surface); border-left: 4px solid var(--card-accent); }
 .saved-card[data-type="credit"] { --card-accent: var(--chart-3); }
 .saved-card[data-type="debit"] { --card-accent: var(--chart-1); }
-.saved-card-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; color: var(--card-accent); background: color-mix(in srgb, var(--card-accent) 12%, transparent); }
+.saved-card-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; align-self: start; color: var(--card-accent); background: color-mix(in srgb, var(--card-accent) 12%, transparent); }
 .saved-card-icon svg { width: 16px; height: 16px; }
 .saved-card-name { font-size: 1rem; font-weight: 600; overflow-wrap: anywhere; }
-.saved-card-number { color: var(--text-secondary); font-size: var(--fs-label); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.saved-card-number { display: flex; flex-wrap: wrap; gap: 2px 6px; color: var(--text-secondary); font-size: var(--fs-label); font-variant-numeric: tabular-nums; white-space: normal; overflow-wrap: anywhere; }
+.saved-card-details { min-width: 0; }
+.saved-card-ending { white-space: nowrap; }
+.saved-card-actions { display: flex; flex-shrink: 0; gap: 4px; align-self: start; }
+.saved-card-actions .btn { flex-shrink: 0; }
 .card-group + .card-group { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--border); }
 .card-group-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
 .card-group-heading h3 { display: flex; align-items: center; gap: 10px; font-size: var(--fs-card); min-width: 0; overflow-wrap: anywhere; }
@@ -684,3 +688,85 @@ h3 { font-size: var(--fs-card); line-height: 1.45; font-weight: 600; letter-spac
 .settings-nav .nav-link[aria-selected="true"] { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
 
 .settings-nav .nav-link[aria-selected="true"] svg { color: var(--accent-text); }
+
+/* Keep transaction labels intact and align each heading with its column. */
+.expense-table td { vertical-align: middle; }
+.expense-table .category-badge { white-space: nowrap; overflow-wrap: normal; max-width: none; }
+.expense-table .refund-column { text-align: center; white-space: nowrap; }
+.refund-action.has-refund { padding-inline: 0; }
+.refund-status { text-transform: none; color: var(--accent-text); background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
+
+/* Analytics cards share their bottom edge without widening the grid. */
+.analytics-breakdowns > *, .analytics-payment-column > *, .refund-content > * { min-width: 0; }
+.analytics-payment-column { align-content: stretch; grid-template-rows: auto 1fr; }
+.refund-panel .panel-heading { margin-bottom: 12px; }
+.refund-content { display: grid; gap: 12px; }
+.refund-amount { font-size: var(--fs-section); font-weight: 600; line-height: 1.4; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.refund-panel .money { white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
+@media (max-width: 1023px) {
+  .analytics-payment-column { grid-template-rows: auto auto; }
+}
+
+.transaction-category-filter { width: 220px; max-width: 100%; min-width: 0; }
+
+.shared-category-row, .shared-category-controls { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; min-width: 0; }
+.shared-category-controls { justify-content: flex-end; }
+@media (max-width: 639px) { .shared-category-controls { width: 100%; } .shared-category-controls .transaction-category-filter { flex: 1; } }
+
+/* Shared filter toolbar: labels above controls, dates below the date selector. */
+.compact-filters { display: grid; grid-template-columns: minmax(0, 1.15fr) repeat(2, minmax(0, 1fr)) auto; align-items: start; gap: 20px; padding: 20px 24px; }
+.filter-field { display: grid; align-content: start; gap: 8px; min-width: 0; }
+.filter-label { color: var(--text-secondary); font-size: var(--fs-meta); line-height: 1.5; font-weight: 500; }
+.compact-filters .select-trigger { min-height: 44px; font-size: var(--fs-body); font-weight: 400; }
+.compact-filters .select-trigger > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.filter-hint { color: var(--muted); font-size: var(--fs-meta); line-height: 1.5; overflow-wrap: anywhere; }
+.filter-card-choice { display: grid; gap: 8px; margin-top: 4px; }
+.filter-reset { margin-top: calc(var(--fs-meta) * 1.5 + 8px); font-size: var(--fs-meta); }
+.compact-filters .custom-range { grid-column: 1 / -1; margin-top: 0; padding-top: 16px; border-top: 1px solid var(--border); }
+@media (max-width: 1023px) {
+  .compact-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .filter-reset { grid-column: 1 / -1; justify-self: end; margin-top: 0; }
+}
+@media (max-width: 639px) {
+  .compact-filters { grid-template-columns: minmax(0, 1fr); padding: 16px; }
+  .filter-reset { justify-self: start; }
+}
+
+.average-info { position: relative; display: inline-flex; vertical-align: middle; }
+.average-info-trigger { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; color: var(--muted); border-radius: 4px; }
+.average-info-trigger svg { width: 14px; height: 14px; }
+.average-info-tooltip { display: none; position: absolute; bottom: calc(100% + 6px); right: 0; width: min(260px, 70vw); padding: 10px 12px; background: var(--surface); color: var(--text-secondary); border: 1px solid var(--border); box-shadow: var(--shadow-pop); border-radius: 6px; font-size: var(--fs-meta); line-height: 1.5; z-index: 20; }
+.average-info-tooltip[data-open="true"] { display: block; }
+
+/* Soft dropdown states; keyboard users retain a visible accent focus ring. */
+.select-trigger.input:focus { border-color: var(--border); outline: none; }
+.select-trigger.input[aria-expanded="true"] { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
+.select-trigger.input:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.select-trigger { transition: border-color 150ms, box-shadow 150ms, background 150ms; }
+.select-trigger:hover { background: var(--surface-hover); }
+.select-options:focus { outline: none; }
+.select-option { border-radius: 5px; }
+.select-option[aria-selected="true"] { background: var(--accent-soft); box-shadow: none; }
+.compact-filters .filter-reset { min-height: 44px; padding: 10px 14px; border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border)); border-radius: 6px; background: var(--accent-soft); color: var(--accent-text); font-weight: 500; }
+.compact-filters .filter-reset:hover:not(:disabled) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--surface)); }
+.compact-filters .filter-reset:disabled { background: var(--surface-hover); color: var(--muted); border-color: var(--border); opacity: .65; }
+
+/* Investment records reuse the app's panels, controls, status badges and dialogs. */
+.investment-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; border: 0; margin: 0; padding: 0; min-width: 0; }
+.investment-form-full { grid-column: 1 / -1; }
+.investment-form-grid .form-actions { margin-top: 0; }
+.investment-records { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: 16px; }
+.investment-record { min-width: 0; display: flex; flex-direction: column; gap: 20px; padding: 20px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.investment-record-heading { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 12px; }
+.investment-record-heading h3 { font-size: var(--fs-body); font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.investment-status { max-width: 100%; font-size: var(--fs-meta); }
+.investment-record-values { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.investment-record-values > div { min-width: 0; }
+.investment-record-values dt { color: var(--muted); font-size: var(--fs-meta); margin-bottom: 4px; }
+.investment-record-values dd { font-size: var(--fs-body); font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.investment-record-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+.investment-record-footer > div:first-child { min-width: 0; overflow-wrap: anywhere; }
+.investment-actions { display: flex; gap: 4px; margin-left: auto; flex-shrink: 0; }
+.investment-loss { color: var(--danger); }
+@media (min-width: 1024px) and (max-width: 1279px) { .nav-inner > nav .nav-link { padding-inline: 10px; gap: 6px; } }
+@media (max-width: 639px) { .investment-form-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; } .investment-record { padding: 16px; } .investment-record-heading { gap: 8px; } }

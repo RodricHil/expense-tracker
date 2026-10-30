@@ -7,7 +7,7 @@ import { optionSchema, categoryUpdateSchema, optionDeleteSchema, parseJsonBody, 
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return unauthorized();
+    if (!session?.user?.email || !session.user.id) return unauthorized();
     await connectDB();
     const options = await ExpenseOption.find({ userId: ownerId(session) }).select("_id kind name archived legacyType").sort({ name: 1 }).lean();
     return Response.json({ options });
@@ -16,7 +16,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return unauthorized();
+    if (!session?.user?.email || !session.user.id) return unauthorized();
     const { kind, name } = optionSchema.parse(await parseJsonBody(req));
     await connectDB();
     const option = await ExpenseOption.findOneAndUpdate({ userId: ownerId(session), kind, name }, { $set: { archived: false }, $setOnInsert: { name } }, { upsert: true, new: true, runValidators: true });
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return unauthorized();
+    if (!session?.user?.email || !session.user.id) return unauthorized();
     const { id, name, kind } = categoryUpdateSchema.parse(await parseJsonBody(req));
     await connectDB();
     const option = await ExpenseOption.findOneAndUpdate(
@@ -46,7 +46,7 @@ export async function PUT(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return unauthorized();
+    if (!session?.user?.email || !session.user.id) return unauthorized();
     const { id, kind } = optionDeleteSchema.parse(await parseJsonBody(req));
     await connectDB();
     // Keep the label for past expenses; remove it from future choices.

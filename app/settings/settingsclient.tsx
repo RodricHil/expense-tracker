@@ -129,11 +129,11 @@ export default function SettingsClient() {
                 {group.length === 0 ? <p className="empty-inline">No {label.toLowerCase()} cards added yet.</p> : <ul className="card-grid">
                   {group.map((card) => <li key={card.id} className="saved-card" data-type={card.type}>
                     <span className="saved-card-icon"><FontAwesomeIcon icon={CARD_TYPE_ICONS[card.type]} aria-hidden="true" /></span>
-                    <div className="min-w-0">
+                    <div className="saved-card-details">
                       <p className="saved-card-name">{card.name}</p>
-                      <p className="saved-card-number"><span className="sr-only">{label} card ending in {card.last4}</span><span aria-hidden="true">{card.network ? `${card.network === "rupay" ? "RuPay" : card.network === "visa" ? "Visa" : "Mastercard"} · ` : ""}{label} Card {maskedCardNumber(card)}</span></p>
+                      <p className="saved-card-number"><span className="sr-only">{label} card ending in {card.last4}</span><span aria-hidden="true">{card.network ? `${card.network === "rupay" ? "RuPay" : card.network === "visa" ? "Visa" : "Mastercard"} · ` : ""}{label} card</span><span className="saved-card-ending" aria-hidden="true">{maskedCardNumber(card)}</span></p>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="saved-card-actions">
                       <button type="button" className="btn btn-icon btn-sm btn-ghost" aria-label={`Edit ${card.name}`} title="Edit" onClick={() => setEditing({ card, type: card.type })}><FontAwesomeIcon icon={faPen} /></button>
                       <button type="button" className="btn btn-icon btn-sm btn-ghost btn-danger" aria-label={`Delete ${card.name}`} title="Delete" onClick={() => setDeleting(card)}><FontAwesomeIcon icon={faTrash} /></button>
                     </div>

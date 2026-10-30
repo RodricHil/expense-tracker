@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useCurrency } from "@/app/components/CurrencyProvider";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowRightFromBracket, faBars, faChartColumn, faChevronDown, faGear, faPlus, faReceipt, faRightToBracket, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRightFromBracket, faChartLine, faBars, faChartColumn, faChevronDown, faGear, faPlus, faReceipt, faRightToBracket, faXmark } from "@fortawesome/free-solid-svg-icons";
 import ConfirmationModal from "./ConfirmationModal";
 import CustomSelect from "./CustomSelect";
 import ThemeControl from "./ThemeControl";
@@ -19,6 +19,7 @@ import Skeleton from "./Skeleton";
 const navLinks = [
   { href: "/dashboard", label: "Expenses", icon: faReceipt },
   { href: "/analytics", label: "Analytics", icon: faChartColumn },
+  { href: "/investments", label: "Investments", icon: faChartLine },
   { href: "/settings", label: "Settings", icon: faGear },
 ];
 
@@ -113,19 +114,19 @@ export default function Navbar() {
       <a href="#main-content" className="skip-link">Skip to content</a>
       <div className="nav-inner">
         <Link href="/dashboard" aria-label="Finex home" className="shrink-0"><Brand /></Link>
-        <nav aria-label="Main navigation" className="hidden md:flex items-center gap-1 mr-auto ml-4 lg:ml-8">
+        <nav aria-label="Main navigation" className="hidden lg:flex items-center gap-1 mr-auto ml-4">
           {navLinks.map((item) => <Link key={item.href} href={item.href} className="nav-link" aria-current={isCurrent(item.href) ? "page" : undefined}><FontAwesomeIcon icon={item.icon} aria-hidden="true" />{item.label}</Link>)}
         </nav>
         <div className="header-actions">
           <ThemeControl />
           {status !== "unauthenticated" && <div className="hidden lg:block" style={{ width: 132 }}>{currencySelect("currency-select", 132)}</div>}
-          <div className="hidden md:block">{account}</div>
-          <button ref={menuButton} type="button" className="btn btn-icon md:hidden" aria-label={open ? "Close navigation" : "Open navigation"} aria-expanded={open} aria-controls="mobile-navigation" onClick={() => { setProfileOpen(false); setOpen(!open); }}>
+          <div className="hidden lg:block">{account}</div>
+          <button ref={menuButton} type="button" className="btn btn-icon lg:hidden" aria-label={open ? "Close navigation" : "Open navigation"} aria-expanded={open} aria-controls="mobile-navigation" onClick={() => { setProfileOpen(false); setOpen(!open); }}>
             <FontAwesomeIcon icon={open ? faXmark : faBars} className="w-4 h-4" />
           </button>
         </div>
       </div>
-      {open && <nav id="mobile-navigation" aria-label="Mobile navigation" className="mobile-nav md:hidden">
+      {open && <nav id="mobile-navigation" aria-label="Mobile navigation" className="mobile-nav lg:hidden">
         {navLinks.map((item) => <Link key={item.href} href={item.href} className="nav-link" aria-current={isCurrent(item.href) ? "page" : undefined} onClick={() => setOpen(false)}><FontAwesomeIcon icon={item.icon} aria-hidden="true" />{item.label}</Link>)}
         <button type="button" className="btn btn-primary" onClick={() => { setOpen(false); openAddExpense(); }}><FontAwesomeIcon icon={faPlus} />Add expense</button>
         {status === "authenticated" && <div className="mobile-account-row">
