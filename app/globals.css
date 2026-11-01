@@ -475,7 +475,6 @@ h3 { font-size: var(--fs-card); line-height: 1.45; font-weight: 600; letter-spac
   .modal { padding: 20px; }
   .modal-backdrop { align-items: flex-end; padding: 0; }
   .modal { max-height: 92svh; border-bottom: 0; }
-  .login-header > span { display: none; }
   .login-content { grid-template-columns: 1fr; gap: 28px; padding: 40px 0; max-width: 440px; }
   .login-preview { display: none; }
   .login-form { margin: auto; padding: 28px; }
