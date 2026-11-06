@@ -757,9 +757,13 @@ h3 { font-size: var(--fs-card); line-height: 1.45; font-weight: 600; letter-spac
 .investment-records { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: 16px; }
 .investment-record { min-width: 0; display: flex; flex-direction: column; gap: 20px; padding: 20px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
 .investment-record-heading { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 12px; }
+.investment-record-icon { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 24px; color: var(--muted); }
+.investment-record-icon svg { width: 14px; height: 14px; }
 .investment-record-heading h3 { font-size: var(--fs-body); font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
-.investment-status { max-width: 100%; font-size: var(--fs-meta); }
-.investment-record-values { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.investment-status { justify-self: end; max-width: 100%; font-size: var(--fs-meta); }
+.investment-status[data-status="active"] { color: var(--accent-text); background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+.investment-status[data-status="paused"] { color: var(--warning); background: var(--warning-bg); border-color: var(--warning-border); }
+.investment-record-values { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr)); gap: 12px; }
 .investment-record-values > div { min-width: 0; }
 .investment-record-values dt { color: var(--muted); font-size: var(--fs-meta); margin-bottom: 4px; }
 .investment-record-values dd { font-size: var(--fs-body); font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
